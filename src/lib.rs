@@ -44,8 +44,11 @@ impl Wire {
 /// A compile-time wire is translated into runtime code via this trait
 impl ToTokens for Wire {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let id = format_ident!("wire_{}", self.index);
-        tokens.extend(quote! { (*#id) });
+        // let id = format_ident!("wire_{}", self.index);
+        // tokens.extend(quote! { (*#id) });
+        let n = self.index;
+        // tokens.extend(quote! { (*(wires.get_unchecked(#n) as *const F as *mut F)) });
+        tokens.extend(quote! { (*wire(#n)) });
     }
 }
 
@@ -65,10 +68,10 @@ impl BaseComposer {
         let n = self.allocated;
         self.allocated += 1;
         let w = Wire::new(n);
-        let id = format_ident!("wire_{}", n);
-        self.circuit_body.extend(quote! {
-            let #id = &mut *(wires.get_unchecked(#n) as *const F as *mut F);
-        });
+        // let id = format_ident!("wire_{}", n);
+        // self.circuit_body.extend(quote! {
+        //     let #id = &mut *(wires.get_unchecked(#n) as *const F as *mut F);
+        // });
         w
     }
 
@@ -77,10 +80,10 @@ impl BaseComposer {
         self.allocated += num;
         (n..(n + num))
             .map(|n| {
-                let id = format_ident!("wire_{}", n);
-                self.circuit_body.extend(quote! {
-                    let #id = &mut *(wires.get_unchecked(#n) as *const F as *mut F);
-                });
+                // let id = format_ident!("wire_{}", n);
+                // self.circuit_body.extend(quote! {
+                //     let #id = &mut *(wires.get_unchecked(#n) as *const F as *mut F);
+                // });
                 Wire::new(n)
             })
             .collect()
@@ -88,8 +91,12 @@ impl BaseComposer {
 
     fn add(&mut self, a: Wire, b: Wire) -> Wire {
         let c = self.new_wire();
+        let i = a.index;
+        let j = b.index;
+        let k = c.index;
         self.circuit_body.extend(quote! {
-            #c = #a + #b;
+            // #c = #a + #b;
+            add_to(#i, #j, #k);
         });
         c
     }
@@ -120,8 +127,12 @@ impl BaseComposer {
 
     fn mul(&mut self, a: Wire, b: Wire) -> Wire {
         let c = self.new_wire();
+        let i = a.index;
+        let j = b.index;
+        let k = c.index;
         self.circuit_body.extend(quote! {
-            #c = #a * #b;
+            // #c = #a * #b;
+            mul_to(#i, #j, #k);
         });
         c
     }
@@ -174,9 +185,22 @@ impl BaseComposer {
 
                 #allocate_wires
 
-                unsafe {
-                    #body
-                }
+                let wire = |i: usize| {
+                    unsafe {
+                        &mut *(wires.get_unchecked(i) as *const F as *mut F)
+                    }
+                };
+
+                let mul_to = |i, j, k| {
+                    (*wire(k)) = (*wire(i)) * (*wire(j))
+                };
+
+                let add_to = |i, j, k| {
+                    (*wire(k)) = (*wire(i)) + (*wire(j))
+                };
+
+                #body
+
                 // #intent
             }
         }
@@ -184,7 +208,7 @@ impl BaseComposer {
 }
 
 const N: usize = 100;
-const M: usize = 30;
+const M: usize = 50;
 
 fn sub(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
     let mut v = vec![e.mul(a, b)];

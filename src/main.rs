@@ -41,6 +41,6 @@ fn main() {
 
     let circuit = print_circuit();
     let raw = format!("{circuit}");
-    // let data = RustFmt::default().format_str(raw).unwrap();
-    fs::write("./src/bin/circuit.rs", raw).expect("Unable to write file");
+    let data = RustFmt::default().format_str(raw).unwrap();
+    fs::write("./src/bin/circuit.rs", data).expect("Unable to write file");
 }
