@@ -1,4 +1,4 @@
-use rcs::print_circuit;
+use rcs::{BaseComposer, my_circuit};
 use rust_format::{Formatter, RustFmt};
 
 // use quote::quote;
@@ -39,8 +39,10 @@ fn main() {
 
     // comp.iter().for_each(|c| c());
 
-    let circuit = print_circuit();
+    let composer = &mut BaseComposer::default();
+    my_circuit(composer);
+    let circuit = composer.compose_final_circuit();
     let raw = format!("{circuit}");
     let data = RustFmt::default().format_str(raw).unwrap();
-    fs::write("./src/bin/circuit.rs", data).expect("Unable to write file");
+    fs::write("./src/bin/circuit_runtime.rs", data).expect("Unable to write file");
 }
