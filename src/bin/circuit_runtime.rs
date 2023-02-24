@@ -1,6 +1,6 @@
 fn main() {
     let compute = || {
-        use rcc::{BigInt, PrimeField, F};
+        use rcc::{BigInt, Field, PrimeField, F};
         use std::env;
         let args: Vec<String> = env::args().collect();
         let wires: Vec<F> = vec![F::default(); 150usize];

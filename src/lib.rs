@@ -317,6 +317,32 @@ impl BaseComposer {
     }
 
     #[component(self)]
+    pub fn inv(&mut self, a: Wire) -> Wire {
+        let b = self.new_wire();
+        self.runtime(quote! {
+            #b = #a.inverse().unwrap();
+        });
+
+        // TODO: constraints need to be generated here
+        b
+    }
+
+    #[component(self)]
+    pub fn inv_zero(&mut self, a: Wire) -> Wire {
+        let b = self.new_wire();
+        self.runtime(quote! {
+            if let Some(v) = #a.inverse() {
+                #b = v;
+            } else {
+                #b = F::from(0);
+            }
+        });
+
+        // TODO: constraints need to be generated here
+        b
+    }
+
+    #[component(self)]
     pub fn sum(&mut self, wires: Vec<Wire>) -> Wire {
         let mut running_sum = vec![*wires.get(0).unwrap()];
         (1..wires.len()).for_each(|i| {
@@ -383,7 +409,7 @@ impl BaseComposer {
 
         quote! {
             || {
-                use rcc::{F, BigInt, PrimeField};
+                use rcc::{F, BigInt, Field, PrimeField};
                 use std::env;
 
                 let args: Vec<String> = env::args().collect();
