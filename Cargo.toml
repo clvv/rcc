@@ -12,6 +12,8 @@ rayon = "1.6"
 ark-ff = "0.4.0"
 ark-bn254 = "0.4.0"
 rust-format = "0.3.4"
+fixedstr = "0.2.9"
+indexmap = "1.9.2"
 
 [profile.dev]
 opt-level = 1

@@ -9,6 +9,9 @@ const M: usize = 2;
 fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
     e.enter_context("mul_seq".into());
 
+    let a = e.new_input(a);
+    let b = e.new_input(b);
+
     let mut v = vec![e.mul(a, b)];
     for i in 0..M {
         v.push(e.mul(
@@ -17,6 +20,8 @@ fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
         ));
     }
     let out = *v.get(M).unwrap();
+
+    let out = e.new_output(out);
 
     e.exit_context();
 
@@ -47,11 +52,11 @@ pub fn my_circuit(e: &mut BaseComposer) {
     let val = e.new_wire();
     e.compose_read(val, 1);
     let (a, b) = gen(e, val);
-    // let c: Vec<Wire> = a.iter().zip(b.iter()).map(|(ai, bi)| {
-    //     mul_seq(e, *ai, *bi)
-    // }).collect();
-    // let sum = e.sum(c);
-    // e.compose_log(sum);
+    let c: Vec<Wire> = a.iter().zip(b.iter()).map(|(ai, bi)| {
+        mul_seq(e, *ai, *bi)
+    }).collect();
+    let sum = e.sum(c);
+    e.compose_log(sum);
 
     e.exit_context();
 }
