@@ -125,7 +125,7 @@ impl Drop for ContextMarker {
     }
 }
 
-/// Environment keeping track of circuit states
+/// The RuntimeComposer exposes interfaces to compose runtime witness generation for circuits.
 #[derive(Default)]
 pub struct RuntimeComposer {
     context_stack: Vec<ComponentContext>,
@@ -137,9 +137,6 @@ impl Composer for RuntimeComposer {
     type ContextMarker = ContextMarker;
 }
 
-/// The BaseComposer exposes interfaces to compose runtime witness generation for circuits
-/// Each instance of the composer is capable of generating runtime witness generation code for one
-/// circuit instantiation.
 impl RuntimeComposer {
     pub fn new() -> Self {
         let mut s = Self::default();
