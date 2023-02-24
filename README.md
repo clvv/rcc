@@ -51,12 +51,15 @@ are not allowed.
 An example circuit is given in `src/bin/circuit.rs`.
 
 ```rust
-use rcc::mock_composer::{MockComposer as Composer, Wire, F, component};
+use rcc::mock_composer::{MockComposer as Composer, Wire, F, new_context_of};
 
 const N: usize = 10;
 const M: usize = 10;
 
-#[component(e)]
+#[new_context_of(e)]
+// `mul_seq` is repeated `N` times in this circuit
+// Encapsulates a new context to speed up compilatin of witness gen code
+// Try removing this and test compilation speed
 fn mul_seq(e: &mut Composer, a: Wire, b: Wire) -> Wire {
     let mut v = vec![e.mul(a, b)];
     for i in 0..M {
@@ -68,7 +71,7 @@ fn mul_seq(e: &mut Composer, a: Wire, b: Wire) -> Wire {
     *v.get(M).unwrap()
 }
 
-#[component(e)]
+#[new_context_of(e)]
 fn gen(e: &mut Composer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
     let (a, b): (Vec<Wire>, Vec<Wire>) = (0..N).map(|i| {
         (
@@ -80,7 +83,6 @@ fn gen(e: &mut Composer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
     (a, b)
 }
 
-#[component(e)]
 pub fn my_circuit(e: &mut Composer) {
     let val = e.new_wire();
     e.arg_read(val, 1);

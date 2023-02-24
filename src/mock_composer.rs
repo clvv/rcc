@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use crate::runtime_composer::RuntimeComposer;
 
 pub use crate::Composer;
-pub use rcc_macro::component;
+pub use rcc_macro::new_context_of;
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
 pub type Wire = <RuntimeComposer as Composer>::Wire;
@@ -51,7 +51,7 @@ impl MockComposer {
         }
     }
 
-    /// Must implement this interface to user #[component(..)] macro
+    /// Must implement this interface to user #[new_context_of(..)] macro
     pub fn new_context(&mut self, name: String) -> ContextMarker {
         self.runtime_composer.new_context(name)
     }
@@ -70,7 +70,7 @@ impl MockComposer {
         self.runtime_composer.runtime(code)
     }
 
-    #[component(self)]
+    #[new_context_of(self)]
     /// Mock add gadget
     pub fn add(&mut self, a: Wire, b: Wire) -> Wire {
         let c = self.new_wire();
@@ -81,7 +81,7 @@ impl MockComposer {
         c
     }
 
-    #[component(self)]
+    #[new_context_of(self)]
     /// Mock add const gadget
     pub fn add_const(&mut self, a: Wire, b: F) -> Wire {
         let b = self.new_constant_wire(b);
@@ -95,7 +95,7 @@ impl MockComposer {
         c
     }
 
-    #[component(self)]
+    #[new_context_of(self)]
     /// Mock sub gadget
     pub fn sub(&mut self, a: Wire, b: Wire) -> Wire {
         let c = self.new_wire();
@@ -107,7 +107,7 @@ impl MockComposer {
         c
     }
 
-    #[component(self)]
+    #[new_context_of(self)]
     /// Mock sub_const gadget
     pub fn sub_const(&mut self, a: Wire, b: F) -> Wire {
         let b = self.new_constant_wire(b);
@@ -121,7 +121,7 @@ impl MockComposer {
         c
     }
 
-    #[component(self)]
+    #[new_context_of(self)]
     /// Mock mul gadget
     pub fn mul(&mut self, a: Wire, b: Wire) -> Wire {
         let c = self.new_wire();
@@ -132,7 +132,7 @@ impl MockComposer {
         c
     }
 
-    #[component(self)]
+    #[new_context_of(self)]
     /// Mock inv gadget
     /// Throws runtime error if `a` is `0`
     pub fn inv(&mut self, a: Wire) -> Wire {
@@ -145,7 +145,7 @@ impl MockComposer {
         b
     }
 
-    #[component(self)]
+    #[new_context_of(self)]
     /// Mock inv_zero gadget
     /// if `a` is 0 then returns `0`
     pub fn inv_zero(&mut self, a: Wire) -> Wire {
@@ -162,7 +162,7 @@ impl MockComposer {
         b
     }
 
-    #[component(self)]
+    #[new_context_of(self)]
     /// Mock sum gadget
     pub fn sum(&mut self, wires: Vec<Wire>) -> Wire {
         let mut running_sum = vec![*wires.get(0).unwrap()];
