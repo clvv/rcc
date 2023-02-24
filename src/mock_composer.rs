@@ -51,7 +51,7 @@ impl MockComposer {
         }
     }
 
-    /// Must implement this interface to user #[new_context_of(..)] macro
+    /// Must implement this interface to use #[new_context_of(..)] macro
     pub fn new_context(&mut self, name: String) -> ContextMarker {
         self.runtime_composer.new_context(name)
     }

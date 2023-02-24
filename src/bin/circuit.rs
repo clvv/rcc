@@ -5,7 +5,7 @@ const M: usize = 10;
 
 #[new_context_of(e)]
 // `mul_seq` is repeated `N` times in this circuit
-// Encapsulates a new context to speed up compilatin of witness gen code
+// Encapsulates a new context to speed up compilation of witness gen code
 // Try removing this and test compilation speed
 fn mul_seq(e: &mut Composer, a: Wire, b: Wire) -> Wire {
     let mut v = vec![e.mul(a, b)];

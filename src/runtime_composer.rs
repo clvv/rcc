@@ -144,13 +144,12 @@ impl RuntimeComposer {
         s
     }
 
-    /// Allocated a new wire and return it
+    /// Allocate a new wire and return it
     pub fn new_wire(&mut self) -> Wire {
         let m = self.context_stack.first().unwrap().allocated;
         for context in self.context_stack.iter_mut() {
             context.allocated += 1
         }
-        // TODO: actually allocated a wire inside the constraint system
         Wire::new(m, self as *mut RuntimeComposer)
     }
 
