@@ -1,6 +1,6 @@
 pragma circom 2.1.2;
 
-template Sub(M) {
+template MulSeq(M) {
     signal input a;
     signal input b;
 
@@ -39,7 +39,7 @@ template Main(N, M) {
     signal output d;
 
     for (var i = 0; i < N; i++) {
-        c[i] <== Sub(M)(a[i], b[i]);
+        c[i] <== MulSeq(M)(a[i], b[i]);
     }
 
     var sum;
