@@ -26,13 +26,13 @@ The high-level flow is as follows:
 To compile the demo circuit specified in `src/bin/circuit.rs` file, run
 
 ```
-cargo --release --bin circuit
+cargo run --release --bin circuit
 ```
 
 To compile and run witness generation binary (generated at `src/bin/circuit_runtime.rs`) file with input 999, run
 
 ```
-cargo --release --bin circuit_runtime 999
+cargo run --release --bin circuit_runtime 999
 ```
 
 ## Circuit Component
@@ -51,11 +51,13 @@ are not allowed.
 An example circuit is given in `src/bin/circuit.rs`.
 
 ```rust
+use rcc::mock_composer::{MockComposer as Composer, Wire, F, component};
+
 const N: usize = 10;
 const M: usize = 10;
 
 #[component(e)]
-fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
+fn mul_seq(e: &mut Composer, a: Wire, b: Wire) -> Wire {
     let mut v = vec![e.mul(a, b)];
     for i in 0..M {
         v.push(e.mul(
@@ -67,7 +69,7 @@ fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
 }
 
 #[component(e)]
-fn gen(e: &mut BaseComposer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
+fn gen(e: &mut Composer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
     let (a, b): (Vec<Wire>, Vec<Wire>) = (0..N).map(|i| {
         (
             e.add_const(val, F::from(i as u32)),
@@ -79,7 +81,7 @@ fn gen(e: &mut BaseComposer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
 }
 
 #[component(e)]
-pub fn my_circuit(e: &mut BaseComposer) {
+pub fn my_circuit(e: &mut Composer) {
     let val = e.new_wire();
     e.arg_read(val, 1);
 
