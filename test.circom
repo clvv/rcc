@@ -51,4 +51,4 @@ template Main(N, M) {
     log(d);
 }
 
-component main = Main(50, 50);
+component main = Main(300, 300);

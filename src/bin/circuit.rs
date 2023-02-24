@@ -3,14 +3,14 @@ use rcs::{BaseComposer, Wire, Fp};
 use rust_format::{Formatter, RustFmt};
 use std::fs;
 
-const N: usize = 2;
-const M: usize = 2;
+const N: usize = 300;
+const M: usize = 300;
 
 fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
     e.enter_context("mul_seq".into());
 
-    let a = e.new_input(a);
-    let b = e.new_input(b);
+    e.new_input(a);
+    e.new_input(b);
 
     let mut v = vec![e.mul(a, b)];
     for i in 0..M {
@@ -21,8 +21,6 @@ fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
     }
     let out = *v.get(M).unwrap();
 
-    let out = e.new_output(out);
-
     e.exit_context();
 
     out
@@ -30,7 +28,6 @@ fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
 
 fn gen(e: &mut BaseComposer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
     e.enter_context("gen".into());
-
     let val = e.new_input(val);
 
     let a = (0..N).map(|i| {

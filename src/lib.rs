@@ -49,32 +49,36 @@ pub trait Composer {
 }
 
 /// A unit of data in a circuit
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Wire {
-    index: usize,
     context: Str,
     global_index: usize,
     input: bool,
+    ptr_composer: *const BaseComposer
 }
 
 impl Wire {
-    fn new(index: usize, context: String, global_index: usize, input: bool) -> Wire {
+    fn new(context: String, global_index: usize, input: bool, ptr_composer: *const BaseComposer) -> Wire {
         let context = Str::from(&context);
-        Wire { index, context, global_index, input }
+        Wire { context, global_index, input, ptr_composer }
+    }
+
+    fn format_against_latest_context(&self) -> TokenStream {
+        unsafe {
+            let e = &*self.ptr_composer as &BaseComposer;
+            let last_context = e.contextStack.last().unwrap();
+            let var = last_context.format_wire(*self);
+            quote! {
+                (*wire(#var))
+            }
+        }
     }
 }
 
 /// A compile-time wire is translated into runtime code via this trait
 impl ToTokens for Wire {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if self.input {
-            let v = format_ident!("v_{}_{}", self.context.as_str(), self.index);
-            tokens.extend(quote! { (*wire(#v)) });
-        } else {
-            let v = format_ident!("wires_{}", self.context.as_str());
-            let i = self.index;
-            tokens.extend(quote! { (*wire(#v[#i])) });
-        }
+        tokens.extend(self.format_against_latest_context())
     }
 }
 
@@ -103,18 +107,30 @@ impl ComponentContext {
         }
     }
 
+    fn input_index(&self, w: Wire) -> Option<usize> {
+        self.input_wires.iter().enumerate().filter_map(|(i, a)| {
+            if a.global_index == w.global_index {
+                Some(i)
+            } else { None }
+        }).next()
+    }
+
     fn format_wire(&self, w: Wire) -> TokenStream {
-        if self.global_start > w.global_index {
-            // must be an input wire
-            let id = format_ident!("v_{}_{}", self.name, w.index);
+        if let Some(index) = self.input_index(w) {
+            let id = format_ident!("in_{}_{}", self.name, index);
             quote! { #id }
         } else {
             let wires_var = format_ident!("wires_{}", self.name);
-            let id = w.index;
+            let id = w.global_index - self.global_start;
             quote! {
                 #wires_var[#id]
             }
         }
+        // if self.global_start > w.global_index {
+        //     // must be an input wire
+        //     let index = self.input_index(w);
+        // } else {
+        // }
     }
 }
 
@@ -139,15 +155,9 @@ impl BaseComposer {
     }
 
     pub fn new_input(&mut self, w: Wire) -> Wire {
-        let context = self.contextStack.last_mut().unwrap();
-        let w = Wire::new(0, context.name.clone(), w.global_index, true);
-        context.input_wires.push(w);
-        w
-    }
-
-    pub fn new_output(&mut self, w: Wire) -> Wire {
-        let context = self.contextStack.iter().rev().take(2).skip(1).next().unwrap();
-        let w = Wire::new(0, context.name.clone(), w.global_index, true);
+        // let ptr = self as *const BaseComposer;
+        // let w = Wire::new(self.get_latest_context_name(), w.global_index, true, ptr);
+        self.contextStack.last_mut().unwrap().input_wires.push(w);
         w
     }
 
@@ -159,10 +169,8 @@ impl BaseComposer {
             context.allocated += 1
         }
         let context = self.contextStack.last().unwrap();
-        let w = Wire::new(n, context.name.clone(), m, false);
+        let w = Wire::new(context.name.clone(), m, false, self as *const BaseComposer);
         w
-        // } else {
-        //     Wire::new(0, self.contextStack.len(), m)
     }
 
     // pub fn new_wires(&mut self, num: usize) -> Vec<Wire> {
@@ -175,6 +183,10 @@ impl BaseComposer {
         if self.contextStack.last().unwrap().gen {
             self.contextStack.last_mut().unwrap().code.extend(code.clone());
         }
+    }
+
+    pub fn get_latest_context_name(&self) -> String {
+        self.contextStack.last().unwrap().name.clone()
     }
 
     pub fn register_func(&mut self, name: String, code: TokenStream) -> bool {
@@ -198,7 +210,7 @@ impl BaseComposer {
         let wires_var = format_ident!("wires_{}", context.name);
         if context.gen {
             let binds = context.input_wires.iter().map(|w| {
-                format_ident!("v_{}_{}", w.context.as_str(), w.index)
+                context.format_wire(*w)
             });
             let code = context.code.clone();
             let def = quote! {
@@ -206,6 +218,7 @@ impl BaseComposer {
                     #code
                 };
             };
+            // println!("{}", def.clone());
             context.code = def;
             self.compiledContexts.insert(context.name.clone(), context.clone());
         }
@@ -224,91 +237,76 @@ impl BaseComposer {
     }
 
     pub fn add(&mut self, a: Wire, b: Wire) -> Wire {
-        // self.register_func("add".into(),
-        //     quote! {
-        //         let add_to = |i, j, k| {
-        //             (*wire(k)) = (*wire(i)) * (*wire(j))
-        //         };
-        //     }
-        // );
-
-        // let c = self.new_wire();
-        // let i = a.index;
-        // let j = b.index;
-        // let k = c.index;
+        self.enter_context("add".into());
+        let a = self.new_input(a);
+        let b = self.new_input(b);
 
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a + #b;
             // add_to(#i, #j, #k);
         });
+
+        self.exit_context();
         // TODO: constraints need to be generated here
         c
     }
 
     pub fn add_const(&mut self, a: Wire, b: Fp) -> Wire {
-        self.enter_context("add_const".into());
-
-        let a = self.new_input(a);
+        // self.enter_context("add_const".into());
+        // let a = self.new_input(a);
 
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a + #b;
         });
 
-        self.exit_context();
+        // self.exit_context();
 
         // TODO: constraints need to be generated here
         c
     }
 
     pub fn sub(&mut self, a: Wire, b: Wire) -> Wire {
-        self.enter_context("sub".into());
-
-        let a = self.new_input(a);
+        // self.enter_context("sub".into());
+        // let a = self.new_input(a);
 
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a - #b;
         });
 
-        self.exit_context();
+        // self.exit_context();
         // TODO: constraints need to be generated here
         c
     }
 
     pub fn sub_const(&mut self, a: Wire, b: Fp) -> Wire {
-        self.enter_context("sub_const".into());
-
-        let a = self.new_input(a);
+        // self.enter_context("sub_const".into());
+        // let a = self.new_input(a);
 
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a - #b;
         });
 
-        self.exit_context();
+        // self.exit_context();
 
         // TODO: constraints need to be generated here
         c
     }
 
     pub fn mul(&mut self, a: Wire, b: Wire) -> Wire {
-        // self.register_func("mul".into(), quote! {
-        //     let mul_to = |i, j, k| {
-        //         (*wire(k)) = (*wire(i)) * (*wire(j))
-        //     };
-        // });
-        // let c = self.new_wire();
-        // let i = a.index;
-        // let j = b.index;
-        // let k = c.index;
+        self.enter_context("mul".into());
+        let a = self.new_input(a);
+        let b = self.new_input(b);
 
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a * #b;
-            // mul_to(#i, #j, #k);
         });
+
+        self.exit_context();
         // TODO: constraints need to be generated here
         c
     }
