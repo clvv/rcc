@@ -1,11 +1,24 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
+use std::collections::HashMap;
 
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
 
-mod circuit;
-pub use circuit::*;
+
+// statements:
+//   - signal / signal_input / signal_output
+//   - invocation
+//   - for loop
+
+// environment:
+//   - allocated cells
+//   - variable to cell mapping
+//   - comptime constant values
+
+// compile(component, env) -> compute closure for component
+// compute closure: read cells, write cells
+
 
 /// Comptime representation of a (constant) field element
 #[derive(Default, Clone, Debug)]
@@ -35,7 +48,7 @@ pub trait Composer {
 /// A unit of data in a circuit
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Wire {
-    index: usize,
+    pub index: usize,
 }
 
 impl Wire {
@@ -68,7 +81,7 @@ struct ComponentContext {
 pub struct BaseComposer {
     allocated: usize,
     circuit_body: TokenStream,
-    func_defs: Vec<TokenStream>,
+    func_defs: HashMap<String, TokenStream>,
     componentContexts: Vec<ComponentContext>
 }
 
@@ -77,24 +90,21 @@ impl Composer for BaseComposer {
 }
 
 impl BaseComposer {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    fn new_wire(&mut self) -> Wire {
-        let n = componentContexts.last_mut().unwrap().allocated;
-        componentContexts.last_mut().unwrap().allocated += 1;
-        // let n = self.allocated;
-        // self.allocated += 1;
-        let w = Wire::new(n);
+    pub fn new_wire(&mut self) -> Wire {
+        let n = self.allocated;
+        self.allocated += 1;
+        Wire::new(n)
         // let id = format_ident!("wire_{}", n);
         // self.circuit_body.extend(quote! {
         //     let #id = &mut *(wires.get_unchecked(#n) as *const F as *mut F);
         // });
-        w
     }
 
-    fn new_wires(&mut self, num: usize) -> Vec<Wire> {
+    pub fn new_wires(&mut self, num: usize) -> Vec<Wire> {
         let n = self.allocated;
         self.allocated += num;
         (n..(n + num))
@@ -104,44 +114,44 @@ impl BaseComposer {
                 //     let #id = &mut *(wires.get_unchecked(#n) as *const F as *mut F);
                 // });
                 Wire::new(n)
-            })
-            .collect()
+            }).collect()
     }
 
-    fn runtime(&mut self, code: TokenStream) {
-        self.component_closures.last_mut().unwrap().extend(code);
+    pub fn runtime(&mut self, code: TokenStream) {
+        self.circuit_body.extend(code);
     }
 
-    fn enter_context(&mut self, name: &str) {
-        self.component_closures.push(TokenStream::default());
+    pub fn register_func(&mut self, name: String, code: TokenStream) -> bool {
+        if !self.func_defs.contains_key(&name) {
+            self.func_defs.insert(name, code);
+            true
+        } else {
+            false
+        }
     }
 
-    fn exit_context(&mut self) {
-    }
-
-    fn add(&mut self, a: Wire, b: Wire) -> Wire {
-        self.enter_context("add");
-        let a = self.process_input(a);
-        let b = self.process_input(b);
+    pub fn add(&mut self, a: Wire, b: Wire) -> Wire {
+        self.register_func("add".into(),
+            quote! {
+                let add_to = |i, j, k| {
+                    (*wire(k)) = (*wire(i)) * (*wire(j))
+                };
+            }
+        );
 
         let c = self.new_wire();
+        let i = a.index;
+        let j = b.index;
+        let k = c.index;
         self.circuit_body.extend(quote! {
-            #c = #a + #b;
+            // #c = #a + #b;
+            add_to(#i, #j, #k);
         });
-        self.exit_context();
-        // let c = self.new_wire();
-        // let i = a.index;
-        // let j = b.index;
-        // let k = c.index;
-        // self.circuit_body.extend(quote! {
-        //     // #c = #a + #b;
-        //     add_to(#i, #j, #k);
-        // });
-        // // TODO: constraints need to be generated here
-        // c
+        // TODO: constraints need to be generated here
+        c
     }
 
-    fn add_const(&mut self, a: Wire, b: Fp) -> Wire {
+    pub fn add_const(&mut self, a: Wire, b: Fp) -> Wire {
         let c = self.new_wire();
         self.circuit_body.extend(quote! {
             #c = #a + #b;
@@ -150,7 +160,7 @@ impl BaseComposer {
         c
     }
 
-    fn sub(&mut self, a: Wire, b: Wire) -> Wire {
+    pub fn sub(&mut self, a: Wire, b: Wire) -> Wire {
         let c = self.new_wire();
         self.circuit_body.extend(quote! {
             #c = #a - #b;
@@ -159,7 +169,7 @@ impl BaseComposer {
         c
     }
 
-    fn sub_const(&mut self, a: Wire, b: Fp) -> Wire {
+    pub fn sub_const(&mut self, a: Wire, b: Fp) -> Wire {
         let c = self.new_wire();
         self.circuit_body.extend(quote! {
             #c = #a - #b;
@@ -168,7 +178,12 @@ impl BaseComposer {
         c
     }
 
-    fn mul(&mut self, a: Wire, b: Wire) -> Wire {
+    pub fn mul(&mut self, a: Wire, b: Wire) -> Wire {
+        self.register_func("mul".into(), quote! {
+            let mul_to = |i, j, k| {
+                (*wire(k)) = (*wire(i)) * (*wire(j))
+            };
+        });
         let c = self.new_wire();
         let i = a.index;
         let j = b.index;
@@ -181,7 +196,7 @@ impl BaseComposer {
         c
     }
 
-    fn sum(&mut self, wires: Vec<Wire>) -> Wire {
+    pub fn sum(&mut self, wires: Vec<Wire>) -> Wire {
         let mut running_sum = vec![*wires.get(0).unwrap()];
         (1..wires.len()).for_each(|i| {
             running_sum.push(self.add(*running_sum.last().unwrap(), *wires.get(i).unwrap()));
@@ -189,7 +204,7 @@ impl BaseComposer {
         *running_sum.last().unwrap()
     }
 
-    fn compose_read(&mut self, wire: Wire, index: usize) {
+    pub fn compose_read(&mut self, wire: Wire, index: usize) {
         self.circuit_body.extend(
             quote! {
                 #wire = F::from(args.get(#index).unwrap().parse::<i32>().unwrap());
@@ -197,13 +212,13 @@ impl BaseComposer {
         )
     }
 
-    fn compose_log(&mut self, wire: Wire) {
+    pub fn compose_log(&mut self, wire: Wire) {
         self.circuit_body.extend(quote! {
             println!("{}", #wire.into_bigint());
         });
     }
 
-    fn compose_wire_allocation(&mut self) -> TokenStream {
+    pub fn compose_wire_allocation(&mut self) -> TokenStream {
         let n = self.allocated;
         quote! {
             let wires: Vec<F> = vec![F::default(); #n];
@@ -214,7 +229,7 @@ impl BaseComposer {
         let allocate_wires = self.compose_wire_allocation();
         let body = self.circuit_body.clone();
 
-        let func_defs = self.func_defs.iter();
+        let func_defs = self.func_defs.iter().map(|(_, x)| x);
 
         // let intent = quote! {
         //     wires.iter().enumerate().for_each(|(i, w)| {
@@ -235,14 +250,6 @@ impl BaseComposer {
                     unsafe {
                         &mut *(wires.get_unchecked(i) as *const F as *mut F)
                     }
-                };
-
-                let mul_to = |i, j, k| {
-                    (*wire(k)) = (*wire(i)) * (*wire(j))
-                };
-
-                let add_to = |i, j, k| {
-                    (*wire(k)) = (*wire(i)) + (*wire(j))
                 };
 
                 #( #func_defs )*

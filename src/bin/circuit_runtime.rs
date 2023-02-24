@@ -4,8 +4,8 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let wires: Vec<F> = vec![F::default(); 2700usize];
     let wire = |i: usize| unsafe { &mut *(wires.get_unchecked(i) as *const F as *mut F) };
+    let add_to = |i, j, k| (*wire(k)) = (*wire(i)) * (*wire(j));
     let mul_to = |i, j, k| (*wire(k)) = (*wire(i)) * (*wire(j));
-    let add_to = |i, j, k| (*wire(k)) = (*wire(i)) + (*wire(j));
     (*wire(0usize)) = F::from(args.get(1usize).unwrap().parse::<i32>().unwrap());
     (*wire(1usize)) = (*wire(0usize)) + F::from(BigInt!("0"));
     (*wire(2usize)) = (*wire(0usize)) + F::from(BigInt!("1"));
