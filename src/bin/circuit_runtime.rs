@@ -1,10 +1,13 @@
 fn main() {
     let compute = || {
-        use rcc::{BigInt, Field, PrimeField, F};
+        use ark_bn254::Fr as F;
+        use ark_ff::{BigInt, PrimeField};
+        type WireVal = F;
         use std::env;
         let args: Vec<String> = env::args().collect();
-        let wires: Vec<F> = vec![F::default(); 150usize];
-        let wire = |i: usize| unsafe { &mut *(wires.get_unchecked(i) as *const F as *mut F) };
+        let wires: Vec<WireVal> = vec![WireVal::default(); 150usize];
+        let wire =
+            |i: usize| unsafe { &mut *(wires.get_unchecked(i) as *const WireVal as *mut WireVal) };
         (*wire(1usize)) = F::from(BigInt!("0"));
         (*wire(4usize)) = F::from(BigInt!("1"));
         (*wire(7usize)) = F::from(BigInt!("2"));

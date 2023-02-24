@@ -8,15 +8,14 @@ use syn::{parse, ItemFn};
 #[proc_macro_attribute]
 pub fn component(composer_var: TokenStream, item: TokenStream) -> TokenStream {
     let f = parse::<ItemFn>(item.clone()).unwrap();
-    let composer_var = format_ident!("{}", format!("{}", composer_var));
-
     let name = format!("{}", f.sig.ident);
     let vis = f.vis;
     let sig = f.sig;
+    let composer_var = format_ident!("{}", format!("{}", composer_var));
 
     let stmts = f.block.stmts;
 
-    let marker = format_ident!("__{}", composer_var);
+    let marker = format_ident!("__context_marker");
 
     let body = quote! {
         #vis #sig {

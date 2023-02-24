@@ -1,13 +1,10 @@
-use rcc::{BaseComposer, Wire, F, component};
-use quote::quote;
-use rust_format::{Formatter, RustFmt};
-use std::fs;
+use rcc::mock_composer::{MockComposer as Composer, Wire, F, component};
 
 const N: usize = 10;
 const M: usize = 10;
 
 #[component(e)]
-fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
+fn mul_seq(e: &mut Composer, a: Wire, b: Wire) -> Wire {
     let mut v = vec![e.mul(a, b)];
     for i in 0..M {
         v.push(e.mul(
@@ -19,7 +16,7 @@ fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
 }
 
 #[component(e)]
-fn gen(e: &mut BaseComposer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
+fn gen(e: &mut Composer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
     let (a, b): (Vec<Wire>, Vec<Wire>) = (0..N).map(|i| {
         (
             e.add_const(val, F::from(i as u32)),
@@ -31,7 +28,7 @@ fn gen(e: &mut BaseComposer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
 }
 
 #[component(e)]
-pub fn my_circuit(e: &mut BaseComposer) {
+pub fn my_circuit(e: &mut Composer) {
     let val = e.new_wire();
     e.arg_read(val, 1);
 
@@ -44,7 +41,11 @@ pub fn my_circuit(e: &mut BaseComposer) {
 }
 
 fn main() {
-    let composer = &mut BaseComposer::new();
+    use quote::quote;
+    use rust_format::{Formatter, RustFmt};
+    use std::fs;
+
+    let composer = &mut Composer::new();
 
     // Compile the circuit
     my_circuit(composer);
