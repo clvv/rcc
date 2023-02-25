@@ -148,5 +148,13 @@ template Main(N, M) {
     log(d);
 }
 
-component main = Main(1000, 1000);
+component main = Main(10, 10);
+```
+
+To compare performance and run the Circom circuit, run
+
+```
+cd example_circom
+time circom test.circom --wasm
+time node example_js/generate_witness.js example_js/example.wasm input.json outputs.wtns
 ```
