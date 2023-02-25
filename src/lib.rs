@@ -1,34 +1,15 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
-// use std::collections::HashMap;
 use indexmap::IndexMap;
+pub use rcc_macro::component;
 
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
 
-/// Comptime representation of a (constant) field element
-#[derive(Default, Clone, Debug)]
-pub struct Fp {
-    value: F
-}
-
-impl From<u32> for Fp {
-    fn from (value: u32) -> Fp {
-        Fp { value: F::from(value) }
-    }
-}
-
-/// A compile-time field element is translated into runtime code via this trait
-impl ToTokens for Fp {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let val = format!("{}", self.value.into_bigint());
-        tokens.extend(quote! { F::from(BigInt!(#val)) });
-    }
-}
-
 /// Composer trait
 pub trait Composer {
     type Wire;
+    type ComponentContext;
 }
 
 /// A unit of data in a circuit
@@ -63,7 +44,7 @@ impl ToTokens for Wire {
 
 /// Keeps track of environment of a single circuit component
 #[derive(Default, Debug, Clone)]
-struct ComponentContext {
+pub struct ComponentContext {
     name: String,
     closure_name: String,
     code: TokenStream,
@@ -155,11 +136,13 @@ impl Drop for ContextMarker {
 pub struct BaseComposer {
     context_stack: Vec<ComponentContext>,
     compiled_contexts: IndexMap<String, ComponentContext>,
-    constants: IndexMap<String, Wire>
+    constants: IndexMap<String, Wire>,
+    circuit_inputs: IndexMap<String, (usize, usize)>,
 }
 
 impl Composer for BaseComposer {
     type Wire = Wire;
+    type ComponentContext = ComponentContext;
 }
 
 impl BaseComposer {
@@ -276,9 +259,8 @@ impl BaseComposer {
         });
     }
 
+    #[component(self)]
     pub fn add(&mut self, a: Wire, b: Wire) -> Wire {
-        let _e = self.new_context("add".into());
-
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a + #b;
@@ -287,10 +269,9 @@ impl BaseComposer {
         c
     }
 
-    pub fn add_const(&mut self, a: Wire, b: Fp) -> Wire {
-        let _e = self.new_context("add_const".into());
-
-        let b = self.new_constant_wire(b.value);
+    #[component(self)]
+    pub fn add_const(&mut self, a: Wire, b: F) -> Wire {
+        let b = self.new_constant_wire(b);
 
         let c = self.new_wire();
         self.runtime(quote! {
@@ -301,8 +282,20 @@ impl BaseComposer {
         c
     }
 
+    #[component(self)]
     pub fn sub(&mut self, a: Wire, b: Wire) -> Wire {
-        let _e = self.new_context("sub".into());
+        let c = self.new_wire();
+        self.runtime(quote! {
+            #c = #a - #b;
+        });
+
+        // TODO: constraints need to be generated here
+        c
+    }
+
+    #[component(self)]
+    pub fn sub_const(&mut self, a: Wire, b: F) -> Wire {
+        let b = self.new_constant_wire(b);
 
         let c = self.new_wire();
         self.runtime(quote! {
@@ -313,23 +306,8 @@ impl BaseComposer {
         c
     }
 
-    pub fn sub_const(&mut self, a: Wire, b: Fp) -> Wire {
-        let _e = self.new_context("sub_const".into());
-
-        let b = self.new_constant_wire(b.value);
-
-        let c = self.new_wire();
-        self.runtime(quote! {
-            #c = #a - #b;
-        });
-
-        // TODO: constraints need to be generated here
-        c
-    }
-
+    #[component(self)]
     pub fn mul(&mut self, a: Wire, b: Wire) -> Wire {
-        let _e = self.new_context("mul".into());
-
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a * #b;
@@ -338,14 +316,35 @@ impl BaseComposer {
         c
     }
 
+    #[component(self)]
     pub fn sum(&mut self, wires: Vec<Wire>) -> Wire {
-        let _e = self.new_context("sum".into());
-
         let mut running_sum = vec![*wires.get(0).unwrap()];
         (1..wires.len()).for_each(|i| {
             running_sum.push(self.add(*running_sum.last().unwrap(), *wires.get(i).unwrap()));
         });
         *running_sum.last().unwrap()
+    }
+
+    /// TODO
+    /// Declare a circuit input
+    pub fn declare_input(&mut self, name: String) -> Wire {
+        if self.circuit_inputs.contains_key(&name) {
+            panic!("Redundant input declaration");
+        }
+        let n = self.context_stack.first().unwrap().allocated;
+        self.circuit_inputs.insert(name, (n, 1));
+        self.new_wire()
+    }
+
+    /// TODO
+    /// Declare circuit inputs
+    pub fn declare_inputs(&mut self, name: String, num: usize) -> Vec<Wire> {
+        if self.circuit_inputs.contains_key(&name) {
+            panic!("Redundant input declaration");
+        }
+        let n = self.context_stack.first().unwrap().allocated;
+        self.circuit_inputs.insert(name, (n, num));
+        self.new_wires(num)
     }
 
     /// Compose runtime code that read an commandline argument into a wire
@@ -358,13 +357,14 @@ impl BaseComposer {
     }
 
     /// Compose runtime code that logs the value of a wire
-    pub fn runtime_log(&mut self, wire: Wire) {
+    pub fn log(&mut self, wire: Wire) {
         self.runtime(quote! {
             println!("{}", #wire.into_bigint());
         });
     }
 
-    pub fn compose_final_circuit(&mut self) -> TokenStream {
+    /// Returns a TokenStream encoding a closure that computes all the witnesses
+    pub fn compose_rust_witness_gen(&mut self) -> TokenStream {
         let defs = self.compiled_contexts.iter().map(|(_, c) | {
             c.code.clone()
         });
@@ -382,10 +382,10 @@ impl BaseComposer {
         let main = context.code;
 
         quote! {
-            use rcc::{F, BigInt, PrimeField};
-            use std::env;
+            || {
+                use rcc::{F, BigInt, PrimeField};
+                use std::env;
 
-            fn main() {
                 let args: Vec<String> = env::args().collect();
                 let wires: Vec<F> = vec![F::default(); #n];
 
@@ -400,7 +400,10 @@ impl BaseComposer {
                 #( #defs )*
 
                 let wires_: Vec<usize> = (0..#n).collect();
-                #main
+
+                #main;
+
+                wires
             }
         }
     }
