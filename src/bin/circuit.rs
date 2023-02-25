@@ -1,16 +1,13 @@
-use quote::{format_ident, quote};
+// use quote::{format_ident, quote};
 use rcs::{BaseComposer, Wire, Fp};
 use rust_format::{Formatter, RustFmt};
 use std::fs;
 
-const N: usize = 300;
-const M: usize = 300;
+const N: usize = 500;
+const M: usize = 500;
 
 fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
-    e.enter_context("mul_seq".into());
-
-    e.new_input(a);
-    e.new_input(b);
+    let _e = e.new_context("mul_seq".into());
 
     let mut v = vec![e.mul(a, b)];
     for i in 0..M {
@@ -19,16 +16,11 @@ fn mul_seq(e: &mut BaseComposer, a: Wire, b: Wire) -> Wire {
                 *v.get(i).unwrap()
         ));
     }
-    let out = *v.get(M).unwrap();
-
-    e.exit_context();
-
-    out
+    *v.get(M).unwrap()
 }
 
 fn gen(e: &mut BaseComposer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
-    e.enter_context("gen".into());
-    let val = e.new_input(val);
+    let _e = e.new_context("gen".into());
 
     let a = (0..N).map(|i| {
         e.add_const(val, Fp::from(i as u32))
@@ -38,13 +30,11 @@ fn gen(e: &mut BaseComposer, val: Wire) -> (Vec<Wire>, Vec<Wire>) {
         e.sub_const(val, Fp::from(i as u32))
     }).collect();
 
-    e.exit_context();
-
     (a, b)
 }
 
 pub fn my_circuit(e: &mut BaseComposer) {
-    e.enter_context("my_circuit".into());
+    let _e = e.new_context("my_circuit".into());
 
     let val = e.new_wire();
     e.compose_read(val, 1);
@@ -54,8 +44,6 @@ pub fn my_circuit(e: &mut BaseComposer) {
     }).collect();
     let sum = e.sum(c);
     e.compose_log(sum);
-
-    e.exit_context();
 }
 
 fn main() {
