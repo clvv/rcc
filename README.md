@@ -23,16 +23,16 @@ The high-level flow is as follows:
                                                                      └─────────────────┘
 ```
 
-To compile the demo circuit specified in `src/bin/circuit.rs` file, run
+To compile the demo circuit specified in `examples/circuit.rs` file, run
 
 ```
-cargo run --release --bin circuit
+cargo run --release --example circuit
 ```
 
-To compile and run witness generation binary (generated at `src/bin/circuit_runtime.rs`) file with input 999, run
+To compile and run witness generation binary (generated at `examples/circuit_runtime.rs`) file with input 999, run
 
 ```
-cargo run --release --bin circuit_runtime 999
+cargo run --release --example circuit_runtime 999
 ```
 
 ## Circuit Component
@@ -48,7 +48,7 @@ are not allowed.
 
 ## Example circuit
 
-An example circuit is given in `src/bin/circuit.rs`.
+An example circuit is given in `examples/circuit.rs`.
 
 ```rust
 use rcc::mock_composer::{MockComposer as Composer, Wire, F, new_context_of};

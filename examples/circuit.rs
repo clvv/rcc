@@ -45,7 +45,6 @@ pub fn my_circuit(e: &mut Composer) {
 fn main() {
     use quote::quote;
     use rust_format::{Formatter, RustFmt};
-    use std::fs;
 
     let composer = &mut Composer::new();
 
@@ -66,5 +65,6 @@ fn main() {
 
     // Write it to `src/bin/circuit_runtime.rs`
     let data = RustFmt::default().format_str(raw).unwrap();
-    fs::write("./src/bin/circuit_runtime.rs", data).expect("Unable to write file");
+
+    std::fs::write("examples/circuit_runtime.rs", data).expect("Unable to write file");
 }
