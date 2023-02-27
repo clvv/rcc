@@ -10,9 +10,9 @@ const M: usize = 10;
 fn mul_seq(e: &mut Composer, a: Wire, b: Wire) -> Wire {
     let mut v = vec![e.mul(a, b)];
     for i in 0..M {
-        v.push(e.mul(*&v[i], *&v[i]));
+        v.push(e.mul(v[i], v[i]));
     }
-    *&v[M]
+    v[M]
 }
 
 #[new_context_of(e)]
