@@ -126,7 +126,7 @@ impl Drop for ContextMarker {
 }
 
 /// The RuntimeComposer exposes interfaces to compose runtime witness generation for circuits.
-#[derive(Default)]
+#[derive(Default, Clone, Debug)]
 pub struct RuntimeComposer {
     context_stack: Vec<ComponentContext>,
     compiled_contexts: IndexMap<String, ComponentContext>,
