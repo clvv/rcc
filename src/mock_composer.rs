@@ -20,6 +20,23 @@ pub struct MockComposer {
 impl Composer for MockComposer {
     type Wire = Wire;
     type ContextMarker = ContextMarker;
+
+    fn enter_context(&mut self, name: String) {
+        self.runtime_composer.enter_context(name)
+    }
+
+    fn exit_context(&mut self) {
+        self.runtime_composer.exit_context()
+    }
+
+    /// Must implement this interface to use #[new_context_of(..)] macro
+    fn new_context(&mut self, name: String) -> ContextMarker {
+        self.runtime_composer.new_context(name)
+    }
+
+    fn runtime(&mut self, code: TokenStream) {
+        self.runtime_composer.runtime(code)
+    }
 }
 
 impl MockComposer {
@@ -49,25 +66,6 @@ impl MockComposer {
             self.constants.insert(key, w);
             w
         }
-    }
-
-    /// Must implement this interface to use #[new_context_of(..)] macro
-    pub fn new_context(&mut self, name: String) -> ContextMarker {
-        self.runtime_composer.new_context(name)
-    }
-
-    // Implementation of the following interfaces are optional
-    // pub fn enter_context(&mut self, name: String) {
-    //     self.runtime_composer.enter_context(name);
-    // }
-
-    // pub fn exit_context(&mut self) {
-    //     self.runtime_composer.exit_context();
-    // }
-
-    /// Shortcut to generate runtime code
-    pub fn runtime(&mut self, code: TokenStream) {
-        self.runtime_composer.runtime(code)
     }
 
     #[new_context_of(self)]

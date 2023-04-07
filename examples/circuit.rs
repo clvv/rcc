@@ -1,4 +1,5 @@
-use rcc::mock_composer::{MockComposer as Composer, Wire, F, new_context_of};
+use rcc::mock_composer::{MockComposer, Wire, F, new_context_of};
+use rcc::Composer;
 
 const N: usize = 10;
 const M: usize = 10;
@@ -7,7 +8,7 @@ const M: usize = 10;
 // `mul_seq` is repeated `N` times in this circuit
 // Encapsulates a new context to speed up compilation of witness gen code
 // Try removing this and test compilation speed
-fn mul_seq(e: &mut Composer, a: Wire, b: Wire) -> Wire {
+fn mul_seq(e: &mut MockComposer, a: Wire, b: Wire) -> Wire {
     let mut v = vec![e.mul(a, b)];
     for i in 0..M {
         v.push(e.mul(v[i], v[i]));
@@ -16,7 +17,7 @@ fn mul_seq(e: &mut Composer, a: Wire, b: Wire) -> Wire {
 }
 
 #[new_context_of(e)]
-fn gen(e: &mut Composer, val: Wire) -> Vec<(Wire, Wire)> {
+fn gen(e: &mut MockComposer, val: Wire) -> Vec<(Wire, Wire)> {
     (0..N).map(|i| {
         (
             e.add_const(val, F::from(i as u32)),
@@ -25,7 +26,7 @@ fn gen(e: &mut Composer, val: Wire) -> Vec<(Wire, Wire)> {
     }).collect()
 }
 
-pub fn my_circuit(e: &mut Composer) {
+pub fn my_circuit(e: &mut MockComposer) {
     let val = e.new_wire();
     e.arg_read(val, 1);
 
@@ -44,7 +45,7 @@ fn main() {
     use quote::quote;
     use rust_format::{Formatter, RustFmt};
 
-    let composer = &mut Composer::new();
+    let composer = &mut MockComposer::new();
 
     // Compile the circuit
     my_circuit(composer);

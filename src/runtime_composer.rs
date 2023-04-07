@@ -135,37 +135,9 @@ pub struct RuntimeComposer {
 impl Composer for RuntimeComposer {
     type Wire = Wire;
     type ContextMarker = ContextMarker;
-}
-
-impl RuntimeComposer {
-    pub fn new() -> Self {
-        let mut s = Self::default();
-        s.context_stack.push(ComponentContext::new("".into(), 0, 0));
-        s
-    }
-
-    /// Allocate a new wire and return it
-    pub fn new_wire(&mut self) -> Wire {
-        let m = self.context_stack.first().unwrap().allocated;
-        for context in self.context_stack.iter_mut() {
-            context.allocated += 1
-        }
-        Wire::new(m, self as *mut RuntimeComposer)
-    }
-
-    /// Generate runtime code into the current context
-    pub fn runtime(&mut self, code: TokenStream) {
-        self.context_stack.last_mut().unwrap().code.extend(code.clone());
-    }
-
-    pub fn enter_context(&mut self, name: String) {
-        let var_start = self.context_stack.last().unwrap().allocated;
-        let global_start = self.context_stack.first().unwrap().allocated;
-        self.context_stack.push(ComponentContext::new(name, var_start, global_start));
-    }
 
     /// Enters into a new context and exits automatically when the returned marker is dropped
-    pub fn new_context(&mut self, name: String) -> ContextMarker {
+    fn new_context(&mut self, name: String) -> ContextMarker {
         self.enter_context(name);
 
         let self_ptr = self as *mut RuntimeComposer;
@@ -178,10 +150,21 @@ impl RuntimeComposer {
         }))
     }
 
+    /// Generate runtime code into the current context
+    fn runtime(&mut self, code: TokenStream) {
+        self.context_stack.last_mut().unwrap().code.extend(code.clone());
+    }
+
+    fn enter_context(&mut self, name: String) {
+        let var_start = self.context_stack.last().unwrap().allocated;
+        let global_start = self.context_stack.first().unwrap().allocated;
+        self.context_stack.push(ComponentContext::new(name, var_start, global_start));
+    }
+
     /// Exits a context
     /// Compile the compute closure for the context
     /// Invokes the compute closure
-    pub fn exit_context(&mut self) {
+    fn exit_context(&mut self) {
         let mut context = self.context_stack.pop().unwrap();
         let wires_var = format_ident!("wires_{}", context.name);
         let binds = context.input_wires.iter().map(|w| {
@@ -223,6 +206,24 @@ impl RuntimeComposer {
         self.runtime(quote! {
             #closure_ident( #wires_var[#start..#end].try_into().unwrap(), #input_wires );
         });
+    }
+
+}
+
+impl RuntimeComposer {
+    pub fn new() -> Self {
+        let mut s = Self::default();
+        s.context_stack.push(ComponentContext::new("".into(), 0, 0));
+        s
+    }
+
+    /// Allocate a new wire and return it
+    pub fn new_wire(&mut self) -> Wire {
+        let m = self.context_stack.first().unwrap().allocated;
+        for context in self.context_stack.iter_mut() {
+            context.allocated += 1
+        }
+        Wire::new(m, self as *mut RuntimeComposer)
     }
 
     /// Returns a TokenStream encoding a closure that computes all the witnesses
