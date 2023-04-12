@@ -20,6 +20,10 @@ pub struct MockComposer {
 impl Composer for MockComposer {
     type Wire = Wire;
     type BaseComposer = RuntimeComposer;
+
+    fn base_composer(&mut self) -> Option<&mut RuntimeComposer> {
+        Some(&mut self.runtime_composer)
+    }
 }
 
 impl MockComposer {

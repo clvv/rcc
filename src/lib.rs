@@ -25,24 +25,24 @@ pub trait Composer {
     type Wire;
     type BaseComposer: Composer;
 
-    fn base_composer(&mut self) -> Option<Self::BaseComposer> {
+    fn base_composer(&mut self) -> Option<&mut Self::BaseComposer> {
         None
     }
 
     fn enter_context(&mut self, name: String) {
-        if let Some(mut e) = self.base_composer() {
+        if let Some(e) = self.base_composer() {
             e.enter_context(name)
         }
     }
 
     fn exit_context(&mut self) {
-        if let Some(mut e) = self.base_composer() {
+        if let Some(e) = self.base_composer() {
             e.exit_context()
         }
     }
 
     fn new_context(&mut self, name: String) -> ContextMarker {
-        if let Some(mut e) = self.base_composer() {
+        if let Some(e) = self.base_composer() {
             e.new_context(name)
         } else {
             ContextMarker { func: Box::new(|| {}) }
@@ -50,7 +50,7 @@ pub trait Composer {
     }
 
     fn runtime(&mut self, code: TokenStream) {
-        if let Some(mut e) = self.base_composer() {
+        if let Some(e) = self.base_composer() {
             e.runtime(code)
         }
     }
