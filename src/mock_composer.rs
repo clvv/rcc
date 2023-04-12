@@ -8,7 +8,6 @@ pub use rcc_macro::new_context_of;
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
 pub type Wire = <RuntimeComposer as Composer>::Wire;
-pub type ContextMarker = <RuntimeComposer as Composer>::ContextMarker;
 
 #[derive(Default)]
 /// Mock circuit composer that implements basic add, mul, and inverse functionalities
@@ -17,26 +16,10 @@ pub struct MockComposer {
     constants: IndexMap<String, Wire>,
 }
 
+/// This implements numerous default functions
 impl Composer for MockComposer {
     type Wire = Wire;
-    type ContextMarker = ContextMarker;
-
-    fn enter_context(&mut self, name: String) {
-        self.runtime_composer.enter_context(name)
-    }
-
-    fn exit_context(&mut self) {
-        self.runtime_composer.exit_context()
-    }
-
-    /// Must implement this interface to use #[new_context_of(..)] macro
-    fn new_context(&mut self, name: String) -> ContextMarker {
-        self.runtime_composer.new_context(name)
-    }
-
-    fn runtime(&mut self, code: TokenStream) {
-        self.runtime_composer.runtime(code)
-    }
+    type BaseComposer = RuntimeComposer;
 }
 
 impl MockComposer {

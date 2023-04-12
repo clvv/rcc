@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use indexmap::IndexMap;
-use crate::Composer;
+use crate::{Composer, ContextMarker};
 
 #[derive(Debug, Copy, Clone)]
 /// A compile time representation of a circuit wire
@@ -108,23 +108,6 @@ impl ComponentContext {
     }
 }
 
-/// A hack to keep automatically call a function when a Rust context exits
-pub struct ContextMarker {
-    func: Box<dyn Fn() -> ()>
-}
-
-impl ContextMarker {
-    fn new(func: Box<dyn Fn() -> ()>) -> Self {
-        Self { func }
-    }
-}
-
-impl Drop for ContextMarker {
-    fn drop(&mut self) {
-        (self.func)();
-    }
-}
-
 /// The RuntimeComposer exposes interfaces to compose runtime witness generation for circuits.
 #[derive(Default, Clone, Debug)]
 pub struct RuntimeComposer {
@@ -134,7 +117,7 @@ pub struct RuntimeComposer {
 
 impl Composer for RuntimeComposer {
     type Wire = Wire;
-    type ContextMarker = ContextMarker;
+    type BaseComposer = ();
 
     /// Enters into a new context and exits automatically when the returned marker is dropped
     fn new_context(&mut self, name: String) -> ContextMarker {
