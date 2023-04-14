@@ -10,18 +10,18 @@ pub struct Wire {
     pub global_index: usize,
     /// A hack to make the composer accessible when ToToken is run for the wire
     /// TODO: implement a custom quote macro and remove this
-    ptr_composer: *mut RuntimeComposer
+    composer_ptr: *mut RuntimeComposer
 }
 
 impl Wire {
-    fn new(global_index: usize, ptr_composer: *mut RuntimeComposer) -> Wire {
-        Wire { global_index, ptr_composer }
+    pub fn new(global_index: usize, ptr_composer: *mut RuntimeComposer) -> Wire {
+        Wire { global_index, composer_ptr: ptr_composer }
     }
 
     /// Print out runtime code that access the allocated wire
-    fn format_against_latest_context(&self) -> TokenStream {
+    pub fn format_against_latest_context(&self) -> TokenStream {
         unsafe {
-            let e = &mut *self.ptr_composer as &mut RuntimeComposer;
+            let e = &mut *self.composer_ptr as &mut RuntimeComposer;
             let last_context = e.context_stack.last_mut().unwrap();
             let id = last_context.format_and_mark_input(*self);
             quote! { (*wire(#id)) }

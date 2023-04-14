@@ -9,9 +9,9 @@ const M: usize = 10;
 // Encapsulates a new context to speed up compilation of witness gen code
 // Try removing this and test compilation speed
 fn mul_seq(e: &mut MockComposer, a: Wire, b: Wire) -> Wire {
-    let mut v = vec![e.mul(a, b)];
+    let mut v = vec![a * b];
     for i in 0..M {
-        v.push(e.mul(v[i], v[i]));
+        v.push(v[i] * v[i]);
     }
     v[M]
 }
@@ -20,8 +20,8 @@ fn mul_seq(e: &mut MockComposer, a: Wire, b: Wire) -> Wire {
 fn gen(e: &mut MockComposer, val: Wire) -> Vec<(Wire, Wire)> {
     (0..N).map(|i| {
         (
-            e.add_const(val, F::from(i as u32)),
-            e.sub_const(val, F::from(i as u32))
+            val + e.new_constant_wire(F::from(i as u32)),
+            val - e.new_constant_wire(F::from(i as u32)),
         )
     }).collect()
 }

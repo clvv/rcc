@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use indexmap::IndexMap;
 use crate::runtime_composer::RuntimeComposer;
 
@@ -7,7 +7,9 @@ pub use crate::Composer;
 pub use rcc_macro::new_context_of;
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
-pub type Wire = <RuntimeComposer as Composer>::Wire;
+pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
+
+use std::ops::{Add, Sub, Mul};
 
 #[derive(Default)]
 /// Mock circuit composer that implements basic add, mul, and inverse functionalities
@@ -15,6 +17,53 @@ pub struct MockComposer {
     runtime_composer: RuntimeComposer,
     constants: IndexMap<String, Wire>,
 }
+
+#[derive(Clone, Copy)]
+pub struct Wire {
+    runtime_wire: RuntimeWire,
+    composer_ptr: *mut MockComposer
+}
+
+impl Add for Wire {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        unsafe {
+            let e = &mut *self.composer_ptr as &mut MockComposer;
+            e.add(self, other)
+        }
+    }
+}
+
+impl Sub for Wire {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        unsafe {
+            let e = &mut *self.composer_ptr as &mut MockComposer;
+            e.sub(self, other)
+        }
+    }
+}
+
+impl Mul for Wire {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self {
+        unsafe {
+            let e = &mut *self.composer_ptr as &mut MockComposer;
+            e.mul(self, other)
+        }
+    }
+}
+
+/// A compile-time wire is translated into runtime code via this trait
+impl ToTokens for Wire {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.extend(self.runtime_wire.format_against_latest_context())
+    }
+}
+
 
 /// This implements numerous default functions
 impl Composer for MockComposer {
@@ -36,7 +85,10 @@ impl MockComposer {
     /// Allocated a new wire and return it
     pub fn new_wire(&mut self) -> Wire {
         // TODO: add wire to constraint system here
-        self.runtime_composer.new_wire()
+        Wire {
+            runtime_wire: self.runtime_composer.new_wire(),
+            composer_ptr: self as *mut MockComposer
+        }
     }
 
     pub fn new_wires(&mut self, num: usize) -> Vec<Wire> {
@@ -49,7 +101,7 @@ impl MockComposer {
         if self.constants.contains_key(&key) {
             *self.constants.get(&key).unwrap()
         } else {
-            let w = self.runtime_composer.new_wire();
+            let w = self.new_wire();
             self.constants.insert(key, w);
             w
         }
@@ -186,7 +238,7 @@ impl MockComposer {
         };
 
         let (constant_values, constant_indices): (Vec<_>, Vec<_>) = self.constants.iter().map(|(v, w)| {
-            (v, w.global_index)
+            (v, w.runtime_wire.global_index)
         }).unzip();
 
         let constant_decl = quote! {
