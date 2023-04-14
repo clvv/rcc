@@ -20,8 +20,8 @@ fn mul_seq(e: &mut MockComposer, a: Wire, b: Wire) -> Wire {
 fn gen(e: &mut MockComposer, val: Wire) -> Vec<(Wire, Wire)> {
     (0..N).map(|i| {
         (
-            val + e.new_constant_wire(F::from(i as u32)),
-            val - e.new_constant_wire(F::from(i as u32)),
+            val + F::from(i as u32),
+            val - F::from(i as u32),
         )
     }).collect()
 }

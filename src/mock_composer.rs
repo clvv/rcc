@@ -35,6 +35,18 @@ impl Add for Wire {
     }
 }
 
+impl Add<F> for Wire {
+    type Output = Self;
+
+    fn add(self, c: F) -> Self {
+        unsafe {
+            let e = &mut *self.composer_ptr as &mut MockComposer;
+            let w = e.new_constant_wire(c);
+            e.add(self, w)
+        }
+    }
+}
+
 impl Sub for Wire {
     type Output = Self;
 
@@ -46,6 +58,18 @@ impl Sub for Wire {
     }
 }
 
+impl Sub<F> for Wire {
+    type Output = Self;
+
+    fn sub(self, c: F) -> Self {
+        unsafe {
+            let e = &mut *self.composer_ptr as &mut MockComposer;
+            let w = e.new_constant_wire(c);
+            e.sub(self, w)
+        }
+    }
+}
+
 impl Mul for Wire {
     type Output = Self;
 
@@ -53,6 +77,18 @@ impl Mul for Wire {
         unsafe {
             let e = &mut *self.composer_ptr as &mut MockComposer;
             e.mul(self, other)
+        }
+    }
+}
+
+impl Mul<F> for Wire {
+    type Output = Self;
+
+    fn mul(self, c: F) -> Self {
+        unsafe {
+            let e = &mut *self.composer_ptr as &mut MockComposer;
+            let w = e.new_constant_wire(c);
+            e.mul(self, w)
         }
     }
 }
