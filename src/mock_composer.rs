@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use indexmap::IndexMap;
-use crate::runtime_composer::RuntimeComposer;
+use crate::{Wire, runtime_composer::RuntimeComposer, arithmetic_logic::ALWire};
 
 pub use crate::Composer;
 pub use rcc_macro::new_context_of;
@@ -9,92 +9,127 @@ pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
 pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
 
-use std::ops::{Add, Sub, Mul};
+use std::ops::{Add, Sub, Mul, Neg};
 
 #[derive(Default)]
 /// Mock circuit composer that implements basic add, mul, and inverse functionalities
 pub struct MockComposer {
     runtime_composer: RuntimeComposer,
-    constants: IndexMap<String, Wire>,
+    constants: IndexMap<String, MockWire>,
 }
 
 #[derive(Clone, Copy)]
-pub struct Wire {
+pub struct MockWire {
     runtime_wire: RuntimeWire,
     composer_ptr: *mut MockComposer
 }
 
-impl Add for Wire {
+impl Add for MockWire {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        unsafe {
-            let e = &mut *self.composer_ptr as &mut MockComposer;
-            e.add(self, other)
-        }
+        self.composer().add(self, other)
     }
 }
 
-impl Add<F> for Wire {
+impl<T> Add<T> for MockWire where T: Into<F> {
     type Output = Self;
 
-    fn add(self, c: F) -> Self {
-        unsafe {
-            let e = &mut *self.composer_ptr as &mut MockComposer;
-            let w = e.new_constant_wire(c);
-            e.add(self, w)
-        }
+    fn add(self, c: T) -> Self {
+        let e = self.composer();
+        let w = e.new_constant_wire(c.into());
+        e.add(self, w)
     }
 }
 
-impl Sub for Wire {
+impl Sub for MockWire {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        unsafe {
-            let e = &mut *self.composer_ptr as &mut MockComposer;
-            e.sub(self, other)
-        }
+        self.composer().sub(self, other)
     }
 }
 
-impl Sub<F> for Wire {
+impl<T> Sub<T> for MockWire where T: Into<F> {
     type Output = Self;
 
-    fn sub(self, c: F) -> Self {
-        unsafe {
-            let e = &mut *self.composer_ptr as &mut MockComposer;
-            let w = e.new_constant_wire(c);
-            e.sub(self, w)
-        }
+    fn sub(self, c: T) -> Self {
+        let e = self.composer();
+        let w = e.new_constant_wire(c.into());
+        e.sub(self, w)
     }
 }
 
-impl Mul for Wire {
+impl Neg for MockWire {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        let e = self.composer();
+        let zero = e.new_constant_wire(0.into());
+        zero - self
+    }
+}
+
+impl Mul for MockWire {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
-        unsafe {
-            let e = &mut *self.composer_ptr as &mut MockComposer;
-            e.mul(self, other)
-        }
+        self.composer().mul(self, other)
     }
 }
 
-impl Mul<F> for Wire {
+impl<T> Mul<T> for MockWire where T: Into<F> {
     type Output = Self;
 
-    fn mul(self, c: F) -> Self {
+    fn mul(self, c: T) -> Self {
+        let e = self.composer();
+        let w = e.new_constant_wire(c.into());
+        e.mul(self, w)
+    }
+}
+
+impl PartialEq for MockWire {
+    fn eq(&self, other: &Self) -> bool {
+        self.composer().assert_eq(*self, *other);
+        true
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        self.composer().assert_ne(*self, *other);
+        true
+    }
+}
+
+impl<T: Into<F> + Clone> PartialEq<T> for MockWire {
+    fn eq(&self, other: &T) -> bool {
+        let e = self.composer();
+        let w = e.new_constant_wire((*other).clone().into());
+        e.assert_eq(*self, w);
+        true
+    }
+
+    fn ne(&self, other: &T) -> bool {
+        let e = self.composer();
+        let w = e.new_constant_wire((*other).clone().into());
+        e.assert_ne(*self, w);
+        true
+    }
+}
+
+impl Wire for MockWire {
+    type Composer = MockComposer;
+
+    fn composer(&self) -> &mut MockComposer {
         unsafe {
-            let e = &mut *self.composer_ptr as &mut MockComposer;
-            let w = e.new_constant_wire(c);
-            e.mul(self, w)
+            &mut *self.composer_ptr as &mut MockComposer
         }
     }
 }
 
+impl ALWire for MockWire { }
+
 /// A compile-time wire is translated into runtime code via this trait
-impl ToTokens for Wire {
+impl ToTokens for MockWire {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.extend(self.runtime_wire.format_against_latest_context())
     }
@@ -103,11 +138,20 @@ impl ToTokens for Wire {
 
 /// This implements numerous default functions
 impl Composer for MockComposer {
-    type Wire = Wire;
+    type Wire = MockWire;
     type BaseComposer = RuntimeComposer;
 
     fn base_composer(&mut self) -> Option<&mut RuntimeComposer> {
         Some(&mut self.runtime_composer)
+    }
+
+    /// Allocated a new wire and return it
+    fn new_wire(&mut self) -> Self::Wire {
+        // TODO: add wire to constraint system here
+        Self::Wire {
+            runtime_wire: self.runtime_composer.new_wire(),
+            composer_ptr: self as *mut MockComposer
+        }
     }
 }
 
@@ -118,21 +162,8 @@ impl MockComposer {
         s
     }
 
-    /// Allocated a new wire and return it
-    pub fn new_wire(&mut self) -> Wire {
-        // TODO: add wire to constraint system here
-        Wire {
-            runtime_wire: self.runtime_composer.new_wire(),
-            composer_ptr: self as *mut MockComposer
-        }
-    }
-
-    pub fn new_wires(&mut self, num: usize) -> Vec<Wire> {
-        (0..num).map(|_| self.new_wire()).collect()
-    }
-
     /// Allocated a constant wire
-    pub fn new_constant_wire(&mut self, v: F) -> Wire {
+    pub fn new_constant_wire(&mut self, v: F) -> MockWire {
         let key = format!("{}", v.into_bigint());
         if self.constants.contains_key(&key) {
             *self.constants.get(&key).unwrap()
@@ -145,7 +176,7 @@ impl MockComposer {
 
     #[new_context_of(self)]
     /// Mock add gadget
-    pub fn add(&mut self, a: Wire, b: Wire) -> Wire {
+    pub fn add(&mut self, a: MockWire, b: MockWire) -> MockWire {
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a + #b;
@@ -156,7 +187,7 @@ impl MockComposer {
 
     #[new_context_of(self)]
     /// Mock add const gadget
-    pub fn add_const(&mut self, a: Wire, b: F) -> Wire {
+    pub fn add_const(&mut self, a: MockWire, b: F) -> MockWire {
         let b = self.new_constant_wire(b);
 
         let c = self.new_wire();
@@ -170,7 +201,7 @@ impl MockComposer {
 
     #[new_context_of(self)]
     /// Mock sub gadget
-    pub fn sub(&mut self, a: Wire, b: Wire) -> Wire {
+    pub fn sub(&mut self, a: MockWire, b: MockWire) -> MockWire {
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a - #b;
@@ -182,7 +213,7 @@ impl MockComposer {
 
     #[new_context_of(self)]
     /// Mock sub_const gadget
-    pub fn sub_const(&mut self, a: Wire, b: F) -> Wire {
+    pub fn sub_const(&mut self, a: MockWire, b: F) -> MockWire {
         let b = self.new_constant_wire(b);
 
         let c = self.new_wire();
@@ -196,7 +227,7 @@ impl MockComposer {
 
     #[new_context_of(self)]
     /// Mock mul gadget
-    pub fn mul(&mut self, a: Wire, b: Wire) -> Wire {
+    pub fn mul(&mut self, a: MockWire, b: MockWire) -> MockWire {
         let c = self.new_wire();
         self.runtime(quote! {
             #c = #a * #b;
@@ -208,7 +239,7 @@ impl MockComposer {
     #[new_context_of(self)]
     /// Mock inv gadget
     /// Throws runtime error if `a` is `0`
-    pub fn inv(&mut self, a: Wire) -> Wire {
+    pub fn inv(&mut self, a: MockWire) -> MockWire {
         let b = self.new_wire();
         self.runtime(quote! {
             #b = #a.inverse().unwrap();
@@ -221,7 +252,7 @@ impl MockComposer {
     #[new_context_of(self)]
     /// Mock inv_zero gadget
     /// if `a` is 0 then returns `0`
-    pub fn inv_zero(&mut self, a: Wire) -> Wire {
+    pub fn inv_zero(&mut self, a: MockWire) -> MockWire {
         let b = self.new_wire();
         self.runtime(quote! {
             if let Some(v) = #a.inverse() {
@@ -237,7 +268,7 @@ impl MockComposer {
 
     #[new_context_of(self)]
     /// Mock sum gadget
-    pub fn sum(&mut self, wires: Vec<Wire>) -> Wire {
+    pub fn sum(&mut self, wires: Vec<MockWire>) -> MockWire {
         let mut running_sum = vec![*wires.get(0).unwrap()];
         (1..wires.len()).for_each(|i| {
             running_sum.push(self.add(*running_sum.last().unwrap(), *wires.get(i).unwrap()));
@@ -245,8 +276,16 @@ impl MockComposer {
         *running_sum.last().unwrap()
     }
 
+    pub fn assert_eq(&mut self, _a: MockWire, _b: MockWire) {
+        // TODO: generate constraints
+    }
+
+    pub fn assert_ne(&mut self, a: MockWire, b: MockWire) {
+        (a - b).assert_not_zero();
+    }
+
     /// Compose runtime code that read an commandline argument into a wire
-    pub fn arg_read(&mut self, wire: Wire, index: usize) {
+    pub fn arg_read(&mut self, wire: MockWire, index: usize) {
         self.runtime(
             quote! {
                 #wire = F::from(args.get(#index).unwrap().parse::<i32>().unwrap());
@@ -255,7 +294,7 @@ impl MockComposer {
     }
 
     /// Compose runtime code that logs the value of a wire
-    pub fn log(&mut self, wire: Wire) {
+    pub fn log(&mut self, wire: MockWire) {
         self.runtime(quote! {
             println!("{}", #wire.into_bigint());
         });
@@ -264,7 +303,7 @@ impl MockComposer {
     /// Returns a TokenStream encoding a closure that computes all the witnesses
     pub fn compose_rust_witness_gen(&mut self) -> TokenStream {
         let prelude = quote! {
-                use ark_ff::{BigInt, PrimeField};
+                use ark_ff::{BigInt, Field, PrimeField};
                 use ark_bn254::Fr as F;
                 // runtime composer expects WireVal to be defined
                 type WireVal = F;

@@ -1,4 +1,4 @@
-use rcc::mock_composer::{MockComposer, Wire, F, new_context_of};
+use rcc::mock_composer::{MockComposer, MockWire, new_context_of};
 use rcc::Composer;
 
 const N: usize = 10;
@@ -8,7 +8,7 @@ const M: usize = 10;
 // `mul_seq` is repeated `N` times in this circuit
 // Encapsulates a new context to speed up compilation of witness gen code
 // Try removing this and test compilation speed
-fn mul_seq(e: &mut MockComposer, a: Wire, b: Wire) -> Wire {
+fn mul_seq(e: &mut MockComposer, a: MockWire, b: MockWire) -> MockWire {
     let mut v = vec![a * b];
     for i in 0..M {
         v.push(v[i] * v[i]);
@@ -17,11 +17,12 @@ fn mul_seq(e: &mut MockComposer, a: Wire, b: Wire) -> Wire {
 }
 
 #[new_context_of(e)]
-fn gen(e: &mut MockComposer, val: Wire) -> Vec<(Wire, Wire)> {
-    (0..N).map(|i| {
+fn gen(e: &mut MockComposer, val: MockWire) -> Vec<(MockWire, MockWire)> where
+{
+    (0..N as u32).map(|i| {
         (
-            val + F::from(i as u32),
-            val - F::from(i as u32),
+            val + i,
+            val - i,
         )
     }).collect()
 }
@@ -32,7 +33,7 @@ pub fn my_circuit(e: &mut MockComposer) {
 
     let ab = gen(e, val);
 
-    let c: Vec<Wire> = ab.iter().map(|(ai, bi)| {
+    let c: Vec<MockWire> = ab.iter().map(|(ai, bi)| {
         mul_seq(e, *ai, *bi)
     }).collect();
 

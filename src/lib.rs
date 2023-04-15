@@ -1,23 +1,14 @@
+#![allow(unused_must_use)]
+
 use proc_macro2::TokenStream;
 
 pub mod runtime_composer;
 pub mod mock_composer;
+pub mod arithmetic_logic;
 
-/// A hack to keep automatically call a function when a Rust context exits
-pub struct ContextMarker {
-    func: Box<dyn Fn() -> ()>
-}
-
-impl ContextMarker {
-    fn new(func: Box<dyn Fn() -> ()>) -> Self {
-        Self { func }
-    }
-}
-
-impl Drop for ContextMarker {
-    fn drop(&mut self) {
-        (self.func)()
-    }
+pub trait Wire {
+    type Composer: Composer<Wire = Self>;
+    fn composer(&self) -> &mut <Self as Wire>::Composer;
 }
 
 /// Composer trait
@@ -27,6 +18,12 @@ pub trait Composer {
 
     fn base_composer(&mut self) -> Option<&mut Self::BaseComposer> {
         None
+    }
+
+    fn new_wire(&mut self) -> Self::Wire;
+
+    fn new_wires(&mut self, num: usize) -> Vec<Self::Wire> {
+        (0..num).map(|_| self.new_wire()).collect()
     }
 
     fn enter_context(&mut self, name: String) {
@@ -76,4 +73,26 @@ pub trait Composer {
 impl Composer for () {
     type Wire = ();
     type BaseComposer = ();
+
+    fn new_wire(&mut self) -> () {
+        ()
+    }
 }
+
+/// A hack to keep automatically call a function when a Rust context exits
+pub struct ContextMarker {
+    func: Box<dyn Fn() -> ()>
+}
+
+impl ContextMarker {
+    fn new(func: Box<dyn Fn() -> ()>) -> Self {
+        Self { func }
+    }
+}
+
+impl Drop for ContextMarker {
+    fn drop(&mut self) {
+        (self.func)()
+    }
+}
+

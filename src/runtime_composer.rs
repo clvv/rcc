@@ -1,36 +1,44 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use indexmap::IndexMap;
-use crate::{Composer, ContextMarker};
+use crate::{Composer, ContextMarker, Wire};
 
 #[derive(Debug, Copy, Clone)]
 /// A compile time representation of a circuit wire
 /// It simply keeps track of its position
-pub struct Wire {
+pub struct RuntimeWire {
     pub global_index: usize,
     /// A hack to make the composer accessible when ToToken is run for the wire
     /// TODO: implement a custom quote macro and remove this
     composer_ptr: *mut RuntimeComposer
 }
 
-impl Wire {
-    pub fn new(global_index: usize, ptr_composer: *mut RuntimeComposer) -> Wire {
-        Wire { global_index, composer_ptr: ptr_composer }
-    }
+impl Wire for RuntimeWire {
+    type Composer = RuntimeComposer;
 
-    /// Print out runtime code that access the allocated wire
-    pub fn format_against_latest_context(&self) -> TokenStream {
+    fn composer(&self) -> &mut RuntimeComposer {
         unsafe {
-            let e = &mut *self.composer_ptr as &mut RuntimeComposer;
-            let last_context = e.context_stack.last_mut().unwrap();
-            let id = last_context.format_and_mark_input(*self);
-            quote! { (*wire(#id)) }
+            &mut *self.composer_ptr as &mut RuntimeComposer
         }
     }
 }
 
+impl RuntimeWire {
+    pub fn new(global_index: usize, ptr_composer: *mut RuntimeComposer) -> RuntimeWire {
+        RuntimeWire { global_index, composer_ptr: ptr_composer }
+    }
+
+    /// Print out runtime code that access the allocated wire
+    pub fn format_against_latest_context(&self) -> TokenStream {
+        let e = self.composer();
+        let last_context = e.context_stack.last_mut().unwrap();
+        let id = last_context.format_and_mark_input(*self);
+        quote! { (*wire(#id)) }
+    }
+}
+
 /// A compile-time wire is translated into runtime code via this trait
-impl ToTokens for Wire {
+impl ToTokens for RuntimeWire {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.extend(self.format_against_latest_context())
     }
@@ -49,7 +57,7 @@ pub struct ComponentContext {
     /// Allocation index relative to the global context
     global_start: usize,
     /// List of accessed wires that are not allocated in this context
-    input_wires: Vec<Wire>,
+    input_wires: Vec<RuntimeWire>,
 }
 
 impl ComponentContext {
@@ -67,7 +75,7 @@ impl ComponentContext {
 
     /// Determine if a given wire has been marked as an input wire for this context
     /// If so, return the input index
-    fn input_index(&self, w: Wire) -> Option<usize> {
+    fn input_index(&self, w: RuntimeWire) -> Option<usize> {
         self.input_wires.iter().enumerate().find_map(|(i, a)| {
             if a.global_index == w.global_index {
                 Some(i)
@@ -76,7 +84,7 @@ impl ComponentContext {
     }
 
     /// Print out runtime code accessing the allocated wire
-    fn format_wire(&self, w: Wire) -> TokenStream {
+    fn format_wire(&self, w: RuntimeWire) -> TokenStream {
         if let Some(index) = self.input_index(w) {
             let id = format_ident!("in_{}_{}", self.name, index);
             quote! { #id }
@@ -90,7 +98,7 @@ impl ComponentContext {
     }
 
     /// Similar to above, but marks a wire as input if it has not been marked so
-    fn format_and_mark_input(&mut self, w: Wire) -> TokenStream {
+    fn format_and_mark_input(&mut self, w: RuntimeWire) -> TokenStream {
         if self.global_start > w.global_index {
             // must be an input wire
             if self.input_index(w) == None {
@@ -116,8 +124,20 @@ pub struct RuntimeComposer {
 }
 
 impl Composer for RuntimeComposer {
-    type Wire = Wire;
+    type Wire = RuntimeWire;
     type BaseComposer = ();
+
+    /// Allocate a new wire and return it
+    fn new_wire(&mut self) -> RuntimeWire {
+        let m = self.context_stack.first().unwrap().allocated;
+        for context in self.context_stack.iter_mut() {
+            context.allocated += 1
+        }
+        RuntimeWire {
+            global_index: m,
+            composer_ptr: self as *mut RuntimeComposer
+        }
+    }
 
     /// Enters into a new context and exits automatically when the returned marker is dropped
     fn new_context(&mut self, name: String) -> ContextMarker {
@@ -198,15 +218,6 @@ impl RuntimeComposer {
         let mut s = Self::default();
         s.context_stack.push(ComponentContext::new("".into(), 0, 0));
         s
-    }
-
-    /// Allocate a new wire and return it
-    pub fn new_wire(&mut self) -> Wire {
-        let m = self.context_stack.first().unwrap().allocated;
-        for context in self.context_stack.iter_mut() {
-            context.allocated += 1
-        }
-        Wire::new(m, self as *mut RuntimeComposer)
     }
 
     /// Returns a TokenStream encoding a closure that computes all the witnesses

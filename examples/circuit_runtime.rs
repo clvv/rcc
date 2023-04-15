@@ -1,7 +1,7 @@
 fn main() {
     let compute = || {
         use ark_bn254::Fr as F;
-        use ark_ff::{BigInt, PrimeField};
+        use ark_ff::{BigInt, Field, PrimeField};
         type WireVal = F;
         use std::env;
         let args: Vec<String> = env::args().collect();
