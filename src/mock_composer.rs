@@ -153,6 +153,10 @@ impl Composer for MockComposer {
             composer_ptr: self as *mut MockComposer
         }
     }
+
+    fn register_input(&mut self, w: Self::Wire) {
+        self.base_composer().unwrap().register_input(w.runtime_wire)
+    }
 }
 
 impl MockComposer {
@@ -303,13 +307,11 @@ impl MockComposer {
     /// Returns a TokenStream encoding a closure that computes all the witnesses
     pub fn compose_rust_witness_gen(&mut self) -> TokenStream {
         let prelude = quote! {
-                use ark_ff::{BigInt, Field, PrimeField};
+                // use ark_ff::{BigInt, Field, PrimeField};
+                use ark_ff::{BigInt, PrimeField};
                 use ark_bn254::Fr as F;
                 // runtime composer expects WireVal to be defined
                 type WireVal = F;
-
-                use std::env;
-                let args: Vec<String> = env::args().collect();
         };
 
         let (constant_values, constant_indices): (Vec<_>, Vec<_>) = self.constants.iter().map(|(v, w)| {

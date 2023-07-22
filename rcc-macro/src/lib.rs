@@ -34,3 +34,4 @@ pub fn new_context_of(composer_var: TokenStream, item: TokenStream) -> TokenStre
 
     body.into()
 }
+

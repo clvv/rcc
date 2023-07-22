@@ -29,7 +29,7 @@ fn gen(e: &mut MockComposer, val: MockWire) -> Vec<(MockWire, MockWire)> where
 
 pub fn my_circuit(e: &mut MockComposer) {
     let val = e.new_wire();
-    e.arg_read(val, 1);
+    e.register_input(val);
 
     let ab = gen(e, val);
 
@@ -43,7 +43,6 @@ pub fn my_circuit(e: &mut MockComposer) {
 }
 
 fn main() {
-    use quote::quote;
     use rust_format::{Formatter, RustFmt};
 
     let composer = &mut MockComposer::new();
@@ -54,17 +53,10 @@ fn main() {
     // Compose the rust witness gen code
     let witness_gen_code = composer.compose_rust_witness_gen();
 
-    // Wrap it in a bare file that simply runs the witness gen code
-    let raw = format!("{}", quote! {
-        // use rcc::{BigInt, PrimeField, F};
-        fn main() {
-            let compute = #witness_gen_code;
-            compute();
-        }
-    });
+    let lib = format!("{}", witness_gen_code);
 
     // Write it to `examples/circuit_runtime.rs`
-    let data = RustFmt::default().format_str(raw).unwrap();
+    let data = RustFmt::default().format_str(lib).unwrap();
 
-    std::fs::write("examples/circuit_runtime.rs", data).expect("Unable to write file");
+    std::fs::write("examples/circuit_runtime_lib.rs", data).expect("Unable to write file");
 }

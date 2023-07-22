@@ -121,6 +121,7 @@ impl ComponentContext {
 pub struct RuntimeComposer {
     context_stack: Vec<ComponentContext>,
     compiled_contexts: IndexMap<String, ComponentContext>,
+    input_wires: Vec<usize>
 }
 
 impl Composer for RuntimeComposer {
@@ -137,6 +138,11 @@ impl Composer for RuntimeComposer {
             global_index: m,
             composer_ptr: self as *mut RuntimeComposer
         }
+    }
+
+    /// Allocate a new wire and return it
+    fn register_input(&mut self, w: RuntimeWire) {
+        self.input_wires.push(w.global_index)
     }
 
     /// Enters into a new context and exits automatically when the returned marker is dropped
@@ -231,10 +237,13 @@ impl RuntimeComposer {
         let context = self.context_stack.pop().unwrap();
         let n = context.allocated;
         let main = context.code;
+        let input_wires = self.input_wires.clone();
+        let input_wires_indices = quote!( #( #input_wires ) ,* );
 
         quote! {
-            || {
-                #prelude
+            #prelude
+
+            pub fn compute(inputs: Vec<WireVal>) -> Vec<WireVal> {
 
                 let wires: Vec<WireVal> = vec![WireVal::default(); #n];
 
@@ -243,6 +252,10 @@ impl RuntimeComposer {
                         &mut *(wires.get_unchecked(i) as *const WireVal as *mut WireVal)
                     }
                 };
+
+                let input_wires = vec![#input_wires_indices];
+
+                input_wires.iter().zip(inputs).for_each(|(index, val)| *wire(*index) = val);
 
                 #init
 
