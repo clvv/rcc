@@ -1,4 +1,4 @@
-use rcc::mock_composer::{MockComposer, MockWire, new_context_of};
+use rcc_mockcomposer::mock_composer::{MockComposer, MockWire, new_context_of};
 use rcc::Composer;
 
 const N: usize = 10;

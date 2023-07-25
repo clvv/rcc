@@ -1,0 +1,12 @@
+[package]
+name = "circuit-examples"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+rcc = { path = "../rcc" }
+rcc-macro = { path = "../rcc-macro" }
+rcc-mockcomposer = { path = "../rcc-mockcomposer" }
+ark-ff = "0.4.0"
+ark-bn254 = "0.4.0"
+rust-format = "0.3.4"

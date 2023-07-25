@@ -3,7 +3,6 @@
 use proc_macro2::TokenStream;
 
 pub mod runtime_composer;
-pub mod mock_composer;
 pub mod arithmetic_logic;
 
 pub trait Wire {

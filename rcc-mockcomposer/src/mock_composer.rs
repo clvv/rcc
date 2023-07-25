@@ -1,9 +1,9 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use indexmap::IndexMap;
-use crate::{Wire, runtime_composer::RuntimeComposer, arithmetic_logic::ALWire};
+use rcc::{Wire, runtime_composer::RuntimeComposer, arithmetic_logic::ALWire};
 
-pub use crate::Composer;
+pub use rcc::Composer;
 pub use rcc_macro::new_context_of;
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;

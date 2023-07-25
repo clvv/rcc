@@ -9,6 +9,5 @@ proc-macro2 = "1.0"
 rayon = "1.6"
 ark-ff = "0.4.0"
 ark-bn254 = "0.4.0"
-rust-format = "0.3.4"
 indexmap = "1.9.2"
-rcc-macro = { path = "rcc-macro" }
+rcc-macro = { path = "../rcc-macro" }
