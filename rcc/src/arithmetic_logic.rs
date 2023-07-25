@@ -1,8 +1,5 @@
 pub use crate::{Composer, Wire};
-pub use ark_ff::Field;
 use quote::{quote, ToTokens};
-// pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
-// pub use ark_bn254::Fr as F;
 
 use std::ops::{Add, Sub, Mul, Neg};
 
