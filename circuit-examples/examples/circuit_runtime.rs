@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 mod circuit_runtime_lib;
 
 use ark_bn254::Fr as F;

@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use indexmap::IndexMap;
-use rcc::{Wire, runtime_composer::RuntimeComposer, arithmetic_logic::ALWire};
+use rcc::{Wire, runtime_composer::RuntimeComposer, arithmetic_logic::{AlgWire, Boolean}};
 
 pub use rcc::Composer;
 pub use rcc_macro::new_context_of;
@@ -126,7 +126,22 @@ impl Wire for MockWire {
     }
 }
 
-impl ALWire for MockWire { }
+impl AlgWire for MockWire {
+    type Bool = Boolean<MockWire>;
+
+    /// Maps any non-zero field element to one and zero to zero.
+    fn to_bool(self) -> Self::Bool {
+        let w_inv = self.inv_or_default(1);
+        w_inv.assert_not_zero();
+        Boolean { wire: self * w_inv }
+    }
+
+    /// Assert that the wire is boolean
+    fn check_bool(self) -> Self::Bool {
+        self * (self - 1) == 0;
+        Boolean { wire: self }
+    }
+}
 
 /// A compile-time wire is translated into runtime code via this trait
 impl ToTokens for MockWire {
@@ -307,8 +322,7 @@ impl MockComposer {
     /// Returns a TokenStream encoding a closure that computes all the witnesses
     pub fn compose_rust_witness_gen(&mut self) -> TokenStream {
         let prelude = quote! {
-                // use ark_ff::{BigInt, Field, PrimeField};
-                use ark_ff::{BigInt, PrimeField};
+                use ark_ff::{BigInt, Field, PrimeField};
                 use ark_bn254::Fr as F;
                 // runtime composer expects WireVal to be defined
                 type WireVal = F;

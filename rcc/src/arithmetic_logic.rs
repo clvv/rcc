@@ -3,7 +3,8 @@ use quote::{quote, ToTokens};
 
 use std::ops::{Add, Sub, Mul, Neg, BitAnd, BitOr, BitXor, Not};
 
-pub trait ALWire:
+/// Trait for arithemtic logic wires
+pub trait AlgWire:
     Add<Output = Self> +
     // Add<u8, Output = Self> +
     // Add<u16, Output = Self> +
@@ -47,7 +48,9 @@ pub trait ALWire:
     ToTokens +
     Sized + Copy + Wire
 {
-    fn inv_unchecked(self, default: u32) -> Self {
+    type Bool: BoolWire;
+
+    fn inv_or_default(self, default: u32) -> Self {
         let e = self.composer();
         let w_inv = e.new_wire();
         e.runtime(quote! {
@@ -57,74 +60,68 @@ pub trait ALWire:
     }
 
     fn assert_not_zero(self) {
-        let w_inv = self.inv_unchecked(0);
+        let w_inv = self.inv_or_default(0);
         self * w_inv == 1;
     }
 
     /// Maps any non-zero field element to one and zero to zero.
-    fn to_bool(self) -> Bool<Self> {
-        let w_inv = self.inv_unchecked(1);
-        w_inv.assert_not_zero();
-        Bool { wire: self * w_inv }
-    }
+    fn to_bool(self) -> Self::Bool;
 
     /// Assert that the wire is boolean
-    fn check_bool(self) -> Bool<Self> {
-        self * (self - 1) == 0;
-        Bool { wire: self }
-    }
+    fn check_bool(self) -> Self::Bool;
 }
 
-/// Struct to capture a boolean wire
+/// Trait for a wire holding a boolean value
+pub trait BoolWire:
+    BitAnd<Output = Self> +
+    BitOr<Output = Self> +
+    BitXor<Output = Self> +
+    Not<Output = Self> + Sized + Copy
+{
+    type AlgWire;
+
+    fn then_or_else(&self, then: Self::AlgWire, els: Self::AlgWire) -> Self::AlgWire;
+}
+
+
 #[derive(Debug, Copy, Clone)]
-pub struct Bool<T: ALWire> {
+/// Default implementation of a boolean wire, generic over any AlgWire
+pub struct Boolean<T: AlgWire> {
     pub wire: T
 }
 
-impl<T: ALWire> Bool<T> {
-    pub fn then(self, then: T) -> BoolThen<T> {
-        BoolThen {
-            wire: self.wire,
-            then,
-        }
+impl<T: AlgWire> BitAnd<Boolean<T>> for Boolean<T> {
+    type Output = Boolean<T>;
+    fn bitand(self, rhs: Boolean<T>) -> Boolean<T> {
+        Boolean { wire: self.wire * rhs.wire }
     }
 }
 
-pub struct BoolThen<T: ALWire> {
-    wire: T,
-    then: T,
-}
-
-impl<T: ALWire> BoolThen<T> {
-    pub fn els(self, other: T) -> T {
-        self.wire * self.then + (-self.wire + 1) * other
+impl<T: AlgWire> BitOr<Boolean<T>> for Boolean<T> {
+    type Output = Boolean<T>;
+    fn bitor(self, rhs: Boolean<T>) -> Boolean<T> {
+        Boolean { wire: self.wire + rhs.wire - self.wire * rhs.wire }
     }
 }
 
-impl<T: ALWire> BitAnd<Bool<T>> for Bool<T> {
-    type Output = Bool<T>;
-    fn bitand(self, rhs: Bool<T>) -> Bool<T> {
-        Bool { wire: self.wire * rhs.wire }
+impl<T: AlgWire> BitXor<Boolean<T>> for Boolean<T> {
+    type Output = Boolean<T>;
+    fn bitxor(self, rhs: Boolean<T>) -> Boolean<T> {
+        Boolean { wire: self.wire + rhs.wire - self.wire * rhs.wire * 2 }
     }
 }
 
-impl<T: ALWire> BitOr<Bool<T>> for Bool<T> {
-    type Output = Bool<T>;
-    fn bitor(self, rhs: Bool<T>) -> Bool<T> {
-        Bool { wire: self.wire + rhs.wire - self.wire * rhs.wire }
+impl<T: AlgWire> Not for Boolean<T> {
+    type Output = Boolean<T>;
+    fn not(self) -> Boolean<T> {
+        Boolean { wire: -self.wire + 1 }
     }
 }
 
-impl<T: ALWire> BitXor<Bool<T>> for Bool<T> {
-    type Output = Bool<T>;
-    fn bitxor(self, rhs: Bool<T>) -> Bool<T> {
-        Bool { wire: self.wire + rhs.wire - self.wire * rhs.wire * 2 }
-    }
-}
+impl<T: AlgWire> BoolWire for Boolean<T> {
+    type AlgWire = T;
 
-impl<T: ALWire> Not for Bool<T> {
-    type Output = Bool<T>;
-    fn not(self) -> Bool<T> {
-        Bool { wire: -self.wire + 1 }
+    fn then_or_else(&self, then: T, els: T) -> T {
+        self.wire * then + (-self.wire + 1) * els
     }
 }
