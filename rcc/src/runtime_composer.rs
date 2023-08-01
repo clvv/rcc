@@ -7,7 +7,9 @@ use crate::{Composer, ContextMarker, Wire};
 /// A compile time representation of a circuit wire
 /// It simply keeps track of its position
 pub struct RuntimeWire {
-    pub global_index: usize,
+    pub global_id: usize,
+    pub column: usize,
+    pub row: usize,
     /// A hack to make the composer accessible when ToToken is run for the wire
     /// TODO: implement a custom quote macro and remove this
     composer_ptr: *mut RuntimeComposer
@@ -24,16 +26,20 @@ impl Wire for RuntimeWire {
 }
 
 impl RuntimeWire {
-    pub fn new(global_index: usize, ptr_composer: *mut RuntimeComposer) -> RuntimeWire {
-        RuntimeWire { global_index, composer_ptr: ptr_composer }
-    }
-
     /// Print out runtime code that access the allocated wire
     pub fn format_against_latest_context(&self) -> TokenStream {
         let e = self.composer();
         let last_context = e.context_stack.last_mut().unwrap();
         let id = last_context.format_and_mark_input(*self);
         quote! { (*wire(#id)) }
+    }
+
+    pub fn to_ref(&self) -> TokenStream {
+        let column = self.column;
+        let row = self.row;
+        quote! {
+            WireRef { column: #column, row: #row }
+        }
     }
 }
 
@@ -77,7 +83,7 @@ impl ComponentContext {
     /// If so, return the input index
     fn input_index(&self, w: RuntimeWire) -> Option<usize> {
         self.input_wires.iter().enumerate().find_map(|(i, a)| {
-            if a.global_index == w.global_index {
+            if a.global_id == w.global_id {
                 Some(i)
             } else { None }
         })
@@ -90,7 +96,7 @@ impl ComponentContext {
             quote! { #id }
         } else {
             let wires_var = format_ident!("wires_{}", self.name);
-            let id = w.global_index - self.global_start;
+            let id = w.global_id - self.global_start;
             quote! {
                 #wires_var[#id]
             }
@@ -99,7 +105,7 @@ impl ComponentContext {
 
     /// Similar to above, but marks a wire as input if it has not been marked so
     fn format_and_mark_input(&mut self, w: RuntimeWire) -> TokenStream {
-        if self.global_start > w.global_index {
+        if self.global_start > w.global_id {
             // must be an input wire
             if self.input_index(w) == None {
                 self.input_wires.push(w);
@@ -108,7 +114,7 @@ impl ComponentContext {
             quote! { #id }
         } else {
             let wires_var = format_ident!("wires_{}", self.name);
-            let id = w.global_index - self.global_start;
+            let id = w.global_id - self.global_start;
             quote! {
                 #wires_var[#id]
             }
@@ -116,33 +122,50 @@ impl ComponentContext {
     }
 }
 
-/// The RuntimeComposer exposes interfaces to compose runtime witness generation for circuits.
+/// The RuntimeComposer is a helper that helps the ciruict builder to mange
+/// (1) allocation of witnesses (called wires)
+/// (2) runtime code that generates the above allocated witnesses from a small set input wires
 #[derive(Default, Clone, Debug)]
 pub struct RuntimeComposer {
     context_stack: Vec<ComponentContext>,
     compiled_contexts: IndexMap<String, ComponentContext>,
-    input_wires: Vec<usize>
+    wires: Vec<RuntimeWire>,
+    input_wires: Vec<RuntimeWire>,
+    column_sizes: Vec<usize>,
 }
 
 impl Composer for RuntimeComposer {
     type Wire = RuntimeWire;
     type BaseComposer = ();
 
-    /// Allocate a new wire and return it
+    /// Allocate a new wire to a column and return it
     fn new_wire(&mut self) -> RuntimeWire {
-        let m = self.context_stack.first().unwrap().allocated;
-        for context in self.context_stack.iter_mut() {
-            context.allocated += 1
-        }
-        RuntimeWire {
-            global_index: m,
-            composer_ptr: self as *mut RuntimeComposer
-        }
+        self.new_wire_to_column(0)
     }
 
-    /// Allocate a new wire and return it
+    /// Allocate a new wire to a column and return it
+    fn new_wire_to_column(&mut self, column: usize) -> RuntimeWire {
+        let m = self.context_stack.first().unwrap().allocated;
+        for context in self.context_stack.iter_mut() {
+            context.allocated += 1;
+        }
+        if column >= self.column_sizes.len() {
+            self.column_sizes.push(0);
+        }
+        let w = RuntimeWire {
+            global_id: m,
+            column,
+            row: self.column_sizes[column],
+            composer_ptr: self as *mut RuntimeComposer
+        };
+        self.wires.push(w);
+        self.column_sizes[column] += 1;
+        w
+    }
+
+    /// Register a wire as an input wire
     fn register_input(&mut self, w: RuntimeWire) {
-        self.input_wires.push(w.global_index)
+        self.input_wires.push(w)
     }
 
     /// Enters into a new context and exits automatically when the returned marker is dropped
@@ -181,7 +204,7 @@ impl Composer for RuntimeComposer {
         });
         let code = context.code.clone();
         let closure = quote! {
-            | #wires_var: &[usize], #( #binds ) ,* | {
+            | #wires_var: &[WireRef], #( #binds ) ,* | {
                 #code
             }
         };
@@ -235,33 +258,51 @@ impl RuntimeComposer {
         });
 
         let context = self.context_stack.pop().unwrap();
-        let n = context.allocated;
         let main = context.code;
-        let input_wires = self.input_wires.clone();
+
+        let input_wires = self.input_wires.iter().map(|w| w.to_ref());
+
         let input_wires_indices = quote!( #( #input_wires ) ,* );
+
+        // let num_columns = self.column_sizes.len();
+        let num_rows_each_column = self.column_sizes.clone();
+
+        let wires_allocation = quote! {
+            let mut wires: Vec<Vec<WireVal>> = vec![];
+
+            #( wires.push(vec![WireVal::default(); #num_rows_each_column]) ) ;* ;
+        };
+
+        let wirerefs: Vec<TokenStream> = self.wires.iter().map(|w| w.to_ref()).collect();
 
         quote! {
             #prelude
 
-            pub fn compute(inputs: Vec<WireVal>) -> Vec<WireVal> {
+            pub fn compute(inputs: Vec<WireVal>) -> Vec<Vec<WireVal>> {
 
-                let wires: Vec<WireVal> = vec![WireVal::default(); #n];
+                #[derive(Copy, Clone)]
+                struct WireRef {
+                    column: usize,
+                    row: usize,
+                }
 
-                let wire = |i: usize| {
+                #wires_allocation
+
+                let wire = |wf: WireRef| {
                     unsafe {
-                        &mut *(wires.get_unchecked(i) as *const WireVal as *mut WireVal)
+                        &mut *(wires.get_unchecked(wf.column).get_unchecked(wf.row) as *const WireVal as *mut WireVal)
                     }
                 };
 
                 let input_wires = vec![#input_wires_indices];
 
-                input_wires.iter().zip(inputs).for_each(|(index, val)| *wire(*index) = val);
+                input_wires.iter().zip(inputs).for_each(|(wf, val)| *wire(*wf) = val);
 
                 #init
 
                 #( #defs )*
 
-                let wires_: Vec<usize> = (0..#n).collect();
+                let wires_: Vec<WireRef> = vec![ #( #wirerefs ) ,* ];
 
                 #main;
 

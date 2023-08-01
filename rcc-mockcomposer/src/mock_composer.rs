@@ -169,6 +169,8 @@ impl Composer for MockComposer {
         }
     }
 
+    fn new_wire_to_column(&mut self, _: usize) -> Self::Wire { todo!() }
+
     fn register_input(&mut self, w: Self::Wire) {
         self.base_composer().unwrap().register_input(w.runtime_wire)
     }
@@ -329,7 +331,7 @@ impl MockComposer {
         };
 
         let (constant_values, constant_indices): (Vec<_>, Vec<_>) = self.constants.iter().map(|(v, w)| {
-            (v, w.runtime_wire.global_index)
+            (v, w.runtime_wire.to_ref())
         }).unzip();
 
         let constant_decl = quote! {

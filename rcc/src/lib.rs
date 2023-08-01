@@ -21,6 +21,8 @@ pub trait Composer {
 
     fn new_wire(&mut self) -> Self::Wire;
 
+    fn new_wire_to_column(&mut self, column: usize) -> Self::Wire;
+
     fn register_input(&mut self, w: Self::Wire);
 
     fn new_wires(&mut self, num: usize) -> Vec<Self::Wire> {
@@ -76,6 +78,10 @@ impl Composer for () {
     type BaseComposer = ();
 
     fn new_wire(&mut self) -> () {
+        ()
+    }
+
+    fn new_wire_to_column(&mut self, _: usize) -> () {
         ()
     }
 
