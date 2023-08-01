@@ -291,8 +291,8 @@ impl MockComposer {
     /// Mock sum gadget
     pub fn sum(&mut self, wires: Vec<MockWire>) -> MockWire {
         let mut running_sum = vec![*wires.get(0).unwrap()];
-        (1..wires.len()).for_each(|i| {
-            running_sum.push(self.add(*running_sum.last().unwrap(), *wires.get(i).unwrap()));
+        self.smart_map(wires.iter(), |e, &w| {
+            running_sum.push(e.add(*running_sum.last().unwrap(), *w));
         });
         *running_sum.last().unwrap()
     }

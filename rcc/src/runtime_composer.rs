@@ -278,13 +278,16 @@ impl RuntimeComposer {
         quote! {
             #prelude
 
+            #[derive(Copy, Clone)]
+            struct WireRef {
+                column: usize,
+                row: usize,
+            }
+
+            static wires_: &[WireRef] = &[ #( #wirerefs ) ,* ];
+
             pub fn compute(inputs: Vec<WireVal>) -> Vec<Vec<WireVal>> {
 
-                #[derive(Copy, Clone)]
-                struct WireRef {
-                    column: usize,
-                    row: usize,
-                }
 
                 #wires_allocation
 
@@ -301,8 +304,6 @@ impl RuntimeComposer {
                 #init
 
                 #( #defs )*
-
-                let wires_: Vec<WireRef> = vec![ #( #wirerefs ) ,* ];
 
                 #main;
 
