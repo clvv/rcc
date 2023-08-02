@@ -2,6 +2,9 @@
 
 use proc_macro2::TokenStream;
 
+#[macro_use]
+pub mod macros;
+
 pub mod runtime_composer;
 pub mod arithmetic_logic;
 
@@ -12,7 +15,7 @@ pub trait Wire {
 
 /// Composer trait
 pub trait Composer {
-    type Wire;
+    type Wire: Copy + Clone;
     type BaseComposer: Composer;
 
     fn base_composer(&mut self) -> Option<&mut Self::BaseComposer> {

@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use indexmap::IndexMap;
-use rcc::{Wire, runtime_composer::RuntimeComposer, arithmetic_logic::{AlgWire, Boolean}};
+use rcc::{Wire, runtime_composer::RuntimeComposer, arithmetic_logic::{AlgWire, Boolean, AlgComposer}, impl_alg_op};
 
 pub use rcc::Composer;
 pub use rcc_macro::new_context_of;
@@ -24,98 +24,6 @@ pub struct MockWire {
     composer_ptr: *mut MockComposer
 }
 
-impl Add for MockWire {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
-        self.composer().add(self, other)
-    }
-}
-
-impl<T> Add<T> for MockWire where T: Into<F> {
-    type Output = Self;
-
-    fn add(self, c: T) -> Self {
-        let e = self.composer();
-        let w = e.new_constant_wire(c.into());
-        e.add(self, w)
-    }
-}
-
-impl Sub for MockWire {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self {
-        self.composer().sub(self, other)
-    }
-}
-
-impl<T> Sub<T> for MockWire where T: Into<F> {
-    type Output = Self;
-
-    fn sub(self, c: T) -> Self {
-        let e = self.composer();
-        let w = e.new_constant_wire(c.into());
-        e.sub(self, w)
-    }
-}
-
-impl Neg for MockWire {
-    type Output = Self;
-
-    fn neg(self) -> Self {
-        let e = self.composer();
-        let zero = e.new_constant_wire(0.into());
-        zero - self
-    }
-}
-
-impl Mul for MockWire {
-    type Output = Self;
-
-    fn mul(self, other: Self) -> Self {
-        self.composer().mul(self, other)
-    }
-}
-
-impl<T> Mul<T> for MockWire where T: Into<F> {
-    type Output = Self;
-
-    fn mul(self, c: T) -> Self {
-        let e = self.composer();
-        let w = e.new_constant_wire(c.into());
-        e.mul(self, w)
-    }
-}
-
-impl PartialEq for MockWire {
-    fn eq(&self, other: &Self) -> bool {
-        self.composer().assert_eq(*self, *other);
-        true
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        self.composer().assert_ne(*self, *other);
-        true
-    }
-}
-
-impl<T: Into<F> + Clone> PartialEq<T> for MockWire {
-    fn eq(&self, other: &T) -> bool {
-        let e = self.composer();
-        let w = e.new_constant_wire((*other).clone().into());
-        e.assert_eq(*self, w);
-        true
-    }
-
-    fn ne(&self, other: &T) -> bool {
-        let e = self.composer();
-        let w = e.new_constant_wire((*other).clone().into());
-        e.assert_ne(*self, w);
-        true
-    }
-}
-
 impl Wire for MockWire {
     type Composer = MockComposer;
 
@@ -126,23 +34,6 @@ impl Wire for MockWire {
     }
 }
 
-impl AlgWire for MockWire {
-    type Bool = Boolean<MockWire>;
-
-    /// Maps any non-zero field element to one and zero to zero.
-    fn to_bool(self) -> Self::Bool {
-        let w_inv = self.inv_or_default(1);
-        w_inv.assert_not_zero();
-        Boolean { wire: self * w_inv }
-    }
-
-    /// Assert that the wire is boolean
-    fn check_bool(self) -> Self::Bool {
-        self * (self - 1) == 0;
-        Boolean { wire: self }
-    }
-}
-
 /// A compile-time wire is translated into runtime code via this trait
 impl ToTokens for MockWire {
     fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -150,6 +41,7 @@ impl ToTokens for MockWire {
     }
 }
 
+impl_alg_op!(MockWire, F);
 
 /// This implements numerous default functions
 impl Composer for MockComposer {
@@ -195,116 +87,6 @@ impl MockComposer {
         }
     }
 
-    #[new_context_of(self)]
-    /// Mock add gadget
-    pub fn add(&mut self, a: MockWire, b: MockWire) -> MockWire {
-        let c = self.new_wire();
-        self.runtime(quote! {
-            #c = #a + #b;
-        });
-        // TODO: constraints need to be generated here
-        c
-    }
-
-    #[new_context_of(self)]
-    /// Mock add const gadget
-    pub fn add_const(&mut self, a: MockWire, b: F) -> MockWire {
-        let b = self.new_constant_wire(b);
-
-        let c = self.new_wire();
-        self.runtime(quote! {
-            #c = #a + #b;
-        });
-
-        // TODO: constraints need to be generated here
-        c
-    }
-
-    #[new_context_of(self)]
-    /// Mock sub gadget
-    pub fn sub(&mut self, a: MockWire, b: MockWire) -> MockWire {
-        let c = self.new_wire();
-        self.runtime(quote! {
-            #c = #a - #b;
-        });
-
-        // TODO: constraints need to be generated here
-        c
-    }
-
-    #[new_context_of(self)]
-    /// Mock sub_const gadget
-    pub fn sub_const(&mut self, a: MockWire, b: F) -> MockWire {
-        let b = self.new_constant_wire(b);
-
-        let c = self.new_wire();
-        self.runtime(quote! {
-            #c = #a - #b;
-        });
-
-        // TODO: constraints need to be generated here
-        c
-    }
-
-    #[new_context_of(self)]
-    /// Mock mul gadget
-    pub fn mul(&mut self, a: MockWire, b: MockWire) -> MockWire {
-        let c = self.new_wire();
-        self.runtime(quote! {
-            #c = #a * #b;
-        });
-        // TODO: constraints need to be generated here
-        c
-    }
-
-    #[new_context_of(self)]
-    /// Mock inv gadget
-    /// Throws runtime error if `a` is `0`
-    pub fn inv(&mut self, a: MockWire) -> MockWire {
-        let b = self.new_wire();
-        self.runtime(quote! {
-            #b = #a.inverse().unwrap();
-        });
-
-        // TODO: constraints need to be generated here
-        b
-    }
-
-    #[new_context_of(self)]
-    /// Mock inv_zero gadget
-    /// if `a` is 0 then returns `0`
-    pub fn inv_zero(&mut self, a: MockWire) -> MockWire {
-        let b = self.new_wire();
-        self.runtime(quote! {
-            if let Some(v) = #a.inverse() {
-                #b = v;
-            } else {
-                #b = F::from(0);
-            }
-        });
-
-        // TODO: constraints need to be generated here
-        b
-    }
-
-    #[new_context_of(self)]
-    /// Mock sum gadget
-    pub fn sum(&mut self, wires: Vec<MockWire>) -> MockWire {
-        let mut running_sum = vec![*wires.get(0).unwrap()];
-        self.smart_map(wires.iter(), |e, &w| {
-            running_sum.push(e.add(*running_sum.last().unwrap(), *w));
-        });
-        *running_sum.last().unwrap()
-    }
-
-    pub fn assert_eq(&mut self, _a: MockWire, _b: MockWire) {
-        // TODO: generate constraints
-    }
-
-    pub fn assert_ne(&mut self, a: MockWire, b: MockWire) {
-        (a - b).assert_not_zero();
-    }
-
     /// Compose runtime code that read an commandline argument into a wire
     pub fn arg_read(&mut self, wire: MockWire, index: usize) {
         self.runtime(
@@ -339,5 +121,135 @@ impl MockComposer {
         };
 
         self.runtime_composer.compose_rust_witness_gen(prelude, constant_decl)
+    }
+}
+
+impl AlgComposer for MockComposer {
+    type Constant = F;
+    type Bool = Boolean<Self::Wire>;
+
+    #[new_context_of(self)]
+    /// Mock add gadget
+    fn add(&mut self, a: MockWire, b: MockWire) -> MockWire {
+        let c = self.new_wire();
+        self.runtime(quote! {
+            #c = #a + #b;
+        });
+        // TODO: constraints need to be generated here
+        c
+    }
+
+    #[new_context_of(self)]
+    /// Mock add const gadget
+    fn add_const(&mut self, a: MockWire, b: F) -> MockWire {
+        let b = self.new_constant_wire(b);
+
+        let c = self.new_wire();
+        self.runtime(quote! {
+            #c = #a + #b;
+        });
+
+        // TODO: constraints need to be generated here
+        c
+    }
+
+    #[new_context_of(self)]
+    /// Mock sub gadget
+    fn sub(&mut self, a: MockWire, b: MockWire) -> MockWire {
+        let c = self.new_wire();
+        self.runtime(quote! {
+            #c = #a - #b;
+        });
+
+        // TODO: constraints need to be generated here
+        c
+    }
+
+    #[new_context_of(self)]
+    /// Mock sub_const gadget
+    fn sub_const(&mut self, a: MockWire, b: F) -> MockWire {
+        let b = self.new_constant_wire(b);
+
+        let c = self.new_wire();
+        self.runtime(quote! {
+            #c = #a - #b;
+        });
+
+        // TODO: constraints need to be generated here
+        c
+    }
+
+    #[new_context_of(self)]
+    /// Mock mul gadget
+    fn mul(&mut self, a: MockWire, b: MockWire) -> MockWire {
+        let c = self.new_wire();
+        self.runtime(quote! {
+            #c = #a * #b;
+        });
+        // TODO: constraints need to be generated here
+        c
+    }
+
+    #[new_context_of(self)]
+    /// Mock sub_const gadget
+    fn mul_const(&mut self, a: MockWire, b: F) -> MockWire {
+        let b = self.new_constant_wire(b);
+
+        let c = self.new_wire();
+        self.runtime(quote! {
+            #c = #a * #b;
+        });
+
+        // TODO: constraints need to be generated here
+        c
+    }
+
+    #[new_context_of(self)]
+    /// Mock inv gadget
+    fn inv_or_panic(&mut self, a: MockWire) -> MockWire {
+        let b = self.new_wire();
+        self.runtime(quote! {
+            #b = #a.inverse().unwrap();
+        });
+
+        // TODO: constraints need to be generated here
+        b
+    }
+
+    #[new_context_of(self)]
+    fn inv_or_any(&mut self, a: MockWire) -> MockWire {
+        let b = self.new_wire();
+        self.runtime(quote! {
+            if let Some(v) = #a.inverse() {
+                #b = v;
+            } else {
+                #b = F::from(0);
+            }
+        });
+
+        // TODO: constraints need to be generated here
+        b
+    }
+
+    fn assert_eq(&mut self, _a: MockWire, _b: MockWire) {
+        // TODO: generate constraints
+    }
+
+    fn assert_eq_const(&mut self, _a: MockWire, _b: F) {
+        // TODO: generate constraints
+    }
+
+    fn assert_ne(&mut self, a: MockWire, b: MockWire) {
+        (a - b).inv_or_panic();
+    }
+
+    fn to_bool(&mut self, a: MockWire) -> Self::Bool {
+        let b = self.inv_or_any(a);
+        Boolean { wire: a * b }
+    }
+
+    fn check_bool(&mut self, a: MockWire) -> Self::Bool {
+        a * (a - 1) == 0;
+        Boolean { wire: a }
     }
 }

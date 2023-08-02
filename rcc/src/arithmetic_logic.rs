@@ -1,5 +1,6 @@
 pub use crate::{Composer, Wire};
 use quote::{quote, ToTokens};
+use rcc_macro::new_context_of;
 
 use std::ops::{Add, Sub, Mul, Neg, BitAnd, BitOr, BitXor, Not};
 
@@ -48,27 +49,58 @@ pub trait AlgWire:
     ToTokens +
     Sized + Copy + Wire
 {
+    fn inv_or_panic(self);
+    fn inv_or_any(self);
+}
+
+pub trait AlgComposer: Composer {
+    type Constant: From<i32> + From<i64> + From<u32> + From<u64>;
     type Bool: BoolWire;
 
-    fn inv_or_default(self, default: u32) -> Self {
-        let e = self.composer();
-        let w_inv = e.new_wire();
-        e.runtime(quote! {
-            #w_inv = #self.inverse().unwrap_or(#default.into());
-        });
-        w_inv
-    }
-
-    fn assert_not_zero(self) {
-        let w_inv = self.inv_or_default(0);
-        self * w_inv == 1;
-    }
+    fn add(&mut self, a: Self::Wire, b: Self::Wire) -> Self::Wire;
+    fn add_const(&mut self, a: Self::Wire, b: Self::Constant) -> Self::Wire;
+    fn sub(&mut self, a: Self::Wire, b: Self::Wire) -> Self::Wire;
+    fn sub_const(&mut self, a: Self::Wire, b: Self::Constant) -> Self::Wire;
+    fn mul(&mut self, a: Self::Wire, b: Self::Wire) -> Self::Wire;
+    fn mul_const(&mut self, a: Self::Wire, b: Self::Constant) -> Self::Wire;
+    fn assert_eq(&mut self, a: Self::Wire, b: Self::Wire);
+    fn assert_eq_const(&mut self, a: Self::Wire, b: Self::Constant);
+    fn inv_or_panic(&mut self, a: Self::Wire) -> Self::Wire;
+    fn inv_or_any(&mut self, a: Self::Wire) -> Self::Wire;
 
     /// Maps any non-zero field element to one and zero to zero.
-    fn to_bool(self) -> Self::Bool;
-
+    fn to_bool(&mut self, a: Self::Wire) -> Self::Bool;
     /// Assert that the wire is boolean
-    fn check_bool(self) -> Self::Bool;
+    fn check_bool(&mut self, a: Self::Wire) -> Self::Bool;
+
+    // Below functions has default implementations that require two "sub constraints".
+    // Backends can decide to provide more efficient variants.
+    fn assert_ne_const(&mut self, a: Self::Wire, b: Self::Constant) {
+        let c = self.sub_const(a, b);
+        self.inv_or_panic(c);
+    }
+    fn assert_ne(&mut self, a: Self::Wire, b: Self::Wire) {
+        let c = self.sub(a, b);
+        self.inv_or_panic(c);
+    }
+
+    #[new_context_of(self)]
+    fn sum(&mut self, wires: Vec<Self::Wire>) -> Self::Wire {
+        let mut running_sum = wires[0];
+        self.smart_map(wires.iter(), |e, &&w| {
+            running_sum = e.add(running_sum, w);
+        });
+        running_sum
+    }
+
+    #[new_context_of(self)]
+    fn prod(&mut self, wires: Vec<Self::Wire>) -> Self::Wire {
+        let mut running_prod = wires[0];
+        self.smart_map(wires.iter(), |e, &&w| {
+            running_prod = e.mul(running_prod, w);
+        });
+        running_prod
+    }
 }
 
 /// Trait for a wire holding a boolean value
