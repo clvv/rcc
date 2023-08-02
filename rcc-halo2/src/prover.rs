@@ -1,4 +1,5 @@
 #![allow(unused_must_use)]
+#![allow(unused_imports)]
 
 use num_bigint::BigUint;
 use polyexen::expr::{Column, ColumnKind, ColumnQuery, Expr, PlonkVar};
@@ -15,7 +16,7 @@ fn u(n: u32) -> Option<BigUint> {
 
 pub fn mock_prove(
     plaf: Plaf,
-    witness: Vec<Fr>
+    _witness: Vec<Fr>
 ) {
 
     let wit = Witness {

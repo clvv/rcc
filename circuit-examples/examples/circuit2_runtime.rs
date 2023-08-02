@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
+#![allow(non_upper_case_globals)]
 
 mod circuit2_runtime_lib;
 

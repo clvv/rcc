@@ -1,5 +1,5 @@
 pub use crate::{Composer, Wire};
-use quote::{quote, ToTokens};
+use quote::ToTokens;
 use rcc_macro::new_context_of;
 
 use std::ops::{Add, Sub, Mul, Neg, BitAnd, BitOr, BitXor, Not};
