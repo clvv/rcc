@@ -13,3 +13,9 @@ whose layout is as follows.
    c    | 0
    d    | 0
 ```
+
+## TODO
+
+1. Implement deserialization for generated Plaf TOML and fixed column CSV
+2. Implement mock and real prover
+3. Implement a command-line helper to compile circuit, run witness gen, and prove

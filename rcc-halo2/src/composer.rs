@@ -8,7 +8,7 @@ use polyexen::expr::{Column, ColumnKind, ColumnQuery, Expr, PlonkVar};
 use polyexen::plaf::{
     ColumnFixed, ColumnWitness, ColumnPublic, Columns, Info, Plaf, Poly, CopyC
 };
-use polyexen::plaf::PlafDisplayBaseTOML;
+use polyexen::plaf::{PlafDisplayBaseTOML, PlafDisplayFixedCSV};
 
 
 use proc_macro2::TokenStream;
@@ -224,7 +224,9 @@ impl H2Composer {
     }
 
     pub fn print_plaf_toml(&self) {
-        println!("{}", PlafDisplayBaseTOML(&self.gen_plaf()));
+        let plaf = self.gen_plaf();
+        println!("Fixed column CSV:\n{}", PlafDisplayFixedCSV(&plaf));
+        println!("Plaf TOML:\n{}", PlafDisplayBaseTOML(&plaf));
     }
 
     pub fn gen_plaf(&self) -> Plaf {
@@ -249,11 +251,13 @@ impl H2Composer {
             exp
         };
 
-        let selectors = self.selectors.iter().map(|&u| Some(BigUint::from(u))).collect();
-        let constants = self.constants.iter().map(|(_, &u)| Some(BigUint::from(u))).collect();
+        let selectors: Vec<_> = self.selectors.iter().map(|&u| Some(BigUint::from(u))).collect();
+        let mut constants: Vec<_> = self.constants.iter().map(|(_, &u)| Some(BigUint::from(u))).collect();
 
-        println!("selectors: {:?}", selectors);
-        println!("constants: {:?}", constants);
+        let n = selectors.len() - constants.len();
+        if n > 0 {
+            constants.extend((0..n).map(|_| None))
+        }
 
         Plaf {
             info,
