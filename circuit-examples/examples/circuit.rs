@@ -1,8 +1,8 @@
 use rcc_mockcomposer::mock_composer::{MockComposer, MockWire, new_context_of};
 use rcc::Composer;
 
-const N: usize = 10;
-const M: usize = 10;
+const N: usize = 100;
+const M: usize = 100;
 
 #[new_context_of(e)]
 // `mul_seq` is repeated `N` times in this circuit
@@ -10,21 +10,23 @@ const M: usize = 10;
 // Try removing this and test compilation speed
 fn mul_seq(e: &mut MockComposer, a: MockWire, b: MockWire) -> MockWire {
     let mut v = vec![a * b];
-    for i in 0..M {
+    e.smart_map(0..M, |_, &i| {
         v.push(v[i] * v[i]);
-    }
+    });
     v[M]
 }
 
 #[new_context_of(e)]
 fn gen(e: &mut MockComposer, val: MockWire) -> Vec<(MockWire, MockWire)> where
 {
-    (0..N as u32).map(|i| {
-        (
+    let mut v = vec![];
+    e.smart_map(0..N as u32, |_, &i| {
+        v.push((
             val + i,
             val - i,
-        )
-    }).collect()
+        ));
+    });
+    v
 }
 
 pub fn my_circuit(e: &mut MockComposer) {
