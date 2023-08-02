@@ -39,8 +39,7 @@ macro_rules! impl_alg_op {
             type Output = Self;
 
             fn neg(self) -> Self {
-                let e = self.composer();
-                let zero = e.new_constant_wire(0.into());
+                let zero = self.composer().new_constant_wire(0.into());
                 zero - self
             }
         }

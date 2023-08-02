@@ -152,10 +152,32 @@ impl H2Composer {
     }
 
     /// Fill the selector vector until it is of the same length as the witness vector
-    fn fill_selector(&mut self) {
+    fn fill_selectors(&mut self) {
         let n = self.wires.len() - self.selectors.len();
         if n > 0 {
             self.selectors.extend((0..n).map(|_| 0))
+        }
+    }
+
+    /// Start a gate with the wire `a`. Trace after this call will look like
+    ///   w | s
+    ///   a | 1
+    ///   * | 0
+    ///   * | 0
+    ///   * | 0
+    ///
+    pub fn start_gate_with(&mut self, a: H2Wire) -> H2Wire {
+        self.fill_selectors();
+
+        if a.id == self.wires.len() - 1 {
+            // If a is latest witness wire, we can simply start the gate at a
+            *self.selectors.last_mut().unwrap() = 1;
+            self.selectors.extend([0, 0, 0].iter());
+            a
+        } else {
+            // If not, we must copy a in
+            self.selectors.extend([1, 0, 0, 0].iter());
+            self.new_wire_from(a)
         }
     }
 
@@ -267,20 +289,14 @@ impl AlgComposer for H2Composer {
     #[new_context_of(self)]
     /// Add gadget
     fn add(&mut self, a: H2Wire, b: H2Wire) -> H2Wire {
-        self.fill_selector();
-
-        // Allocate new wires. Order of allocation matters here.
-        let ap = self.new_wire_from(a);
+        let ap = self.start_gate_with(a);
         let bp = self.new_wire_from(b);
         let _one = self.new_constant_wire(1.into());
-
-        // Generate a new runtime wire and generate runtime code to compute it from a and b
         let c = self.new_wire();
+
         self.runtime(quote! {
             #c = #ap + #bp;
         });
-
-        self.selectors.extend([1, 0, 0, 0].iter());
 
         c
     }
@@ -288,18 +304,14 @@ impl AlgComposer for H2Composer {
     #[new_context_of(self)]
     /// Add const gadget
     fn add_const(&mut self, a: H2Wire, b: F) -> H2Wire {
-        self.fill_selector();
-
-        let ap = self.new_wire_from(a);
+        let ap = self.start_gate_with(a);
         let bp = self.new_constant_wire(b);
         let _one = self.new_constant_wire(1.into());
-
         let c = self.new_wire();
+
         self.runtime(quote! {
             #c = #ap + #bp;
         });
-
-        self.selectors.extend([1, 0, 0, 0].iter());
 
         c
     }
@@ -307,20 +319,14 @@ impl AlgComposer for H2Composer {
     #[new_context_of(self)]
     /// Sub gadget
     fn sub(&mut self, a: H2Wire, b: H2Wire) -> H2Wire {
-        self.fill_selector();
-
-        // Allocate new wires. Order of allocation matters here.
-        let ap = self.new_wire_from(a);
+        let ap = self.start_gate_with(a);
         let bp = self.new_wire_from(b);
         let _minus_one = self.new_constant_wire((-1).into());
-
-        // Generate a new runtime wire and generate runtime code to compute it from a and b
         let c = self.new_wire();
+
         self.runtime(quote! {
             #c = #ap - #bp;
         });
-
-        self.selectors.extend([1, 0, 0, 0].iter());
 
         c
     }
@@ -328,18 +334,14 @@ impl AlgComposer for H2Composer {
     #[new_context_of(self)]
     /// Sub_const gadget
     fn sub_const(&mut self, a: H2Wire, b: F) -> H2Wire {
-        self.fill_selector();
-
-        let ap = self.new_wire_from(a);
+        let ap = self.start_gate_with(a);
         let bp = self.new_constant_wire(b);
         let _minus_one = self.new_constant_wire((-1).into());
-
         let c = self.new_wire();
+
         self.runtime(quote! {
             #c = #ap - #bp;
         });
-
-        self.selectors.extend([1, 0, 0, 0].iter());
 
         c
     }
@@ -347,19 +349,15 @@ impl AlgComposer for H2Composer {
     #[new_context_of(self)]
     /// Mul gadget
     fn mul(&mut self, a: H2Wire, b: H2Wire) -> H2Wire {
-        self.fill_selector();
-
-        let _zero = self.new_constant_wire(0.into());
+        let zero = self.new_constant_wire(0.into());
+        let zero = self.start_gate_with(zero);
         let ap = self.new_wire_from(a);
         let bp = self.new_wire_from(b);
-
-        // Generate a new runtime wire and generate runtime code to compute it from a and b
         let c = self.new_wire();
+
         self.runtime(quote! {
             #c = #ap * #bp;
         });
-
-        self.selectors.extend([1, 0, 0, 0].iter());
 
         c
     }
@@ -367,65 +365,49 @@ impl AlgComposer for H2Composer {
     #[new_context_of(self)]
     /// Mul const gadget
     fn mul_const(&mut self, a: H2Wire, b: F) -> H2Wire {
-        self.fill_selector();
-
-        let _zero = self.new_constant_wire(0.into());
+        let zero = self.new_constant_wire(0.into());
+        let zero = self.start_gate_with(zero);
         let ap = self.new_wire_from(a);
         let bp = self.new_constant_wire(b);
-
         let c = self.new_wire();
+
         self.runtime(quote! {
             #c = #ap * #bp;
         });
-
-        self.selectors.extend([1, 0, 0, 0].iter());
 
         c
     }
 
     #[new_context_of(self)]
     fn assert_eq(&mut self, a: H2Wire, b: H2Wire) {
-        self.fill_selector();
-
-        let _ap = self.new_wire_from(a);
+        let ap = self.start_gate_with(a);
         let _zero = self.new_constant_wire(0.into());
         let _zero = self.new_constant_wire(0.into());
         let _bp = self.new_wire_from(b);
-
-        self.selectors.extend([1, 0, 0, 0].iter());
     }
 
     #[new_context_of(self)]
     fn assert_eq_const(&mut self, a: H2Wire, b: F) {
-        self.fill_selector();
-
-        let _ap = self.new_wire_from(a);
+        let ap = self.start_gate_with(a);
         let _zero = self.new_constant_wire(0.into());
         let _zero = self.new_constant_wire(0.into());
         let _bp = self.new_constant_wire(b);
-
-        self.selectors.extend([1, 0, 0, 0].iter());
     }
 
     #[new_context_of(self)]
     fn assert_ne_const(&mut self, a: H2Wire, b: F) {
-        self.fill_selector();
-
-        let _ap = self.new_wire_from(a);
+        let ap = self.start_gate_with(a);
         let _zero = self.new_constant_wire(0.into());
         let _zero = self.new_constant_wire(0.into());
         let _bp = self.new_constant_wire(b);
-
-        self.selectors.extend([1, 0, 0, 0].iter());
     }
 
     #[new_context_of(self)]
     /// Inv gadget
     /// If `a` is `0` at runtime, constraint system cannot be satisfied
     fn inv_or_panic(&mut self, a: H2Wire) -> H2Wire {
-        self.fill_selector();
-
-        let _zero = self.new_constant_wire(0.into());
+        let zero = self.new_constant_wire(0.into());
+        let zero = self.start_gate_with(zero);
         let ap = self.new_wire_from(a);
         let b = self.new_wire();
         let _one = self.new_constant_wire(1.into());
@@ -434,9 +416,6 @@ impl AlgComposer for H2Composer {
             #b = #ap.inverse()..unwrap_or(0.into());
         });
 
-
-        self.selectors.extend([1, 0, 0, 0].iter());
-
         b
     }
 
@@ -444,9 +423,8 @@ impl AlgComposer for H2Composer {
     /// Inv gadget
     /// If `a` is `0` at runtime, return wire can hold arbitrary value
     fn inv_or_any(&mut self, a: H2Wire) -> H2Wire {
-        self.fill_selector();
-
         let zero_or_one = self.new_wire();
+        let zero_or_one = self.start_gate_with(zero_or_one);
         let ap = self.new_wire_from(a);
         let b = self.new_wire();
         let _one = self.new_constant_wire(1.into());
@@ -460,8 +438,6 @@ impl AlgComposer for H2Composer {
                 #zero_or_one = 1.into();
             }
         });
-
-        self.selectors.extend([1, 0, 0, 0].iter());
 
         // asssert that zero_or_one is 0 or 1
         zero_or_one * (zero_or_one - 1) == 0;
