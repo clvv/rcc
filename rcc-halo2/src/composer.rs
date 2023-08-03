@@ -10,7 +10,6 @@ use polyexen::plaf::{
 };
 use polyexen::plaf::{PlafDisplayBaseTOML, PlafDisplayFixedCSV};
 
-
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use indexmap::IndexMap;
