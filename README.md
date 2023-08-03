@@ -1,6 +1,27 @@
 # Rust Circuit Compiler (RCC)
 
-A proof-of-concept circuit building and witness generation library.
+A proof-of-concept zk circuit building and witness generation library.
+
+## Why another circuit builder?
+
+RCC have two main differentiating factors from existing zk circuit libraries.
+
+1. **Separation of circuit building and witness generation.** In RCC, circuit
+   builders do not compute witnesses, instead, they generate
+   rust code which is then compiled into the witness generator (similar to
+   Circom). This makes witness generation very efficient.
+2. **Abstraction via traits.** High-level circuits can be built generically
+   over traits, which enables circuit re-use. Backends can implement these
+   traits in the most efficient manner available to the backend, such via
+   custom and lookup gates.
+
+## FAQ
+
+- Q: I'm building a new zk proving backend in rust, why should I integrate with
+RCC?
+- A: (1) Implementing an RCC circuit builder means that your backend get access
+to high-level circuit functionalities, for free. (2) RCC provide a way for your
+circuit builder to build a very efficient witness generator.
 
 ## Compilation Pipeline
 
@@ -23,7 +44,7 @@ The high-level flow is as follows:
                                                                      └─────────────────┘
 ```
 
-To compile the demo circuit specified in `examples/circuit.rs` file, run
+To compile the demo circuit specified in `circuit-examples/examples/circuit.rs` file, `cd` into `circuit-examples` and run
 
 ```
 cargo run --release --example circuit
