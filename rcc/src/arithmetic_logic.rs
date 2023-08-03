@@ -118,35 +118,33 @@ pub trait BoolWire:
 
 #[derive(Debug, Copy, Clone)]
 /// Default implementation of a boolean wire, generic over any AlgWire
-pub struct Boolean<T: AlgWire> {
-    pub wire: T
-}
+pub struct Boolean<T: AlgWire>(pub T);
 
 impl<T: AlgWire> BitAnd<Boolean<T>> for Boolean<T> {
     type Output = Boolean<T>;
     fn bitand(self, rhs: Boolean<T>) -> Boolean<T> {
-        Boolean { wire: self.wire * rhs.wire }
+        Boolean(self.0 * rhs.0)
     }
 }
 
 impl<T: AlgWire> BitOr<Boolean<T>> for Boolean<T> {
     type Output = Boolean<T>;
     fn bitor(self, rhs: Boolean<T>) -> Boolean<T> {
-        Boolean { wire: self.wire + rhs.wire - self.wire * rhs.wire }
+        Boolean(self.0 + rhs.0 - self.0 * rhs.0)
     }
 }
 
 impl<T: AlgWire> BitXor<Boolean<T>> for Boolean<T> {
     type Output = Boolean<T>;
     fn bitxor(self, rhs: Boolean<T>) -> Boolean<T> {
-        Boolean { wire: self.wire + rhs.wire - self.wire * rhs.wire * 2 }
+        Boolean(self.0 + rhs.0 * (self.0 * -2 + 1))
     }
 }
 
 impl<T: AlgWire> Not for Boolean<T> {
     type Output = Boolean<T>;
     fn not(self) -> Boolean<T> {
-        Boolean { wire: -self.wire + 1 }
+        Boolean(-self.0 + 1)
     }
 }
 
@@ -154,6 +152,6 @@ impl<T: AlgWire> BoolWire for Boolean<T> {
     type AlgWire = T;
 
     fn then_or_else(&self, then: T, els: T) -> T {
-        self.wire * then + (-self.wire + 1) * els
+        self.0 * then + (-self.0 + 1) * els
     }
 }

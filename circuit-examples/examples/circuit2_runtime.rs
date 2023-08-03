@@ -12,7 +12,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let val = F::from(args.get(1).unwrap().parse::<i32>().unwrap());
     let wires = circuit2_runtime_lib::compute(vec![val]);
-    let witness = rcc_output_to_plaf_witness(wires);
     println!("Public Instance: {:?}", wires[1]);
+    let witness = rcc_output_to_plaf_witness(wires);
     println!("{:?}", witness);
 }

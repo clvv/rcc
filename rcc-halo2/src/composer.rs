@@ -450,11 +450,11 @@ impl AlgComposer for H2Composer {
 
     fn to_bool(&mut self, a: H2Wire) -> Self::Bool {
         let b = self.inv_or_any(a);
-        Boolean { wire: a * b }
+        Boolean(a * b)
     }
 
     fn check_bool(&mut self, a: H2Wire) -> Self::Bool {
         a * (a - 1) == 0;
-        Boolean { wire: a }
+        Boolean(a)
     }
 }
