@@ -1,5 +1,5 @@
 use rcc_mockcomposer::mock_composer::{MockComposer, MockWire, new_context_of};
-use rcc::Composer;
+use rcc::{traits::AlgComposer, Composer};
 
 const N: usize = 100;
 const M: usize = 100;

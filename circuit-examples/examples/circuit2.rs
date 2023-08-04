@@ -1,6 +1,6 @@
 use rcc_halo2::composer::{H2Composer, H2Wire, new_context_of};
 use rcc::Composer;
-use rcc::arithmetic_logic::{AlgWire, AlgComposer};
+use rcc::traits::{AlgWire, AlgComposer};
 
 const N: usize = 10;
 const M: usize = 10;

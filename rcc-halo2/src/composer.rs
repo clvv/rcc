@@ -2,7 +2,7 @@
 #![allow(unused_must_use)]
 
 use num_bigint::BigUint;
-use rcc::arithmetic_logic::AlgComposer;
+use rcc::traits::AlgComposer;
 use std::ops::{Add, Sub, Mul, Neg};
 use polyexen::expr::{Column, ColumnKind, ColumnQuery, Expr, PlonkVar};
 use polyexen::plaf::{
@@ -15,7 +15,7 @@ use quote::{quote, ToTokens};
 use indexmap::IndexMap;
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
-use rcc::{Wire, runtime_composer::RuntimeComposer, arithmetic_logic::{AlgWire, Boolean}, impl_alg_op};
+use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean}, impl_alg_op};
 
 pub use rcc::Composer;
 pub use rcc_macro::new_context_of;

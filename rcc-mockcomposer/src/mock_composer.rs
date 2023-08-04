@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use indexmap::IndexMap;
-use rcc::{Wire, runtime_composer::RuntimeComposer, arithmetic_logic::{AlgWire, Boolean, AlgComposer}, impl_alg_op};
+use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean, AlgComposer}, impl_alg_op};
 
 pub use rcc::Composer;
 pub use rcc_macro::new_context_of;
