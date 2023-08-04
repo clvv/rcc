@@ -28,9 +28,9 @@ RCC?
 ## RCC vs. ...
 
 We take heavy inspirations and lessons from [Circom](https://docs.circom.io/) and
-other rust-based circuit building libraries
+other rust-based circuit building libraries, including:
 * [Arkworks R1CS builder](https://github.com/arkworks-rs/r1cs-std)
-* [ECLAIR / OpenZL](https://github.com/openzklib/openzl).
+* [ECLAIR / OpenZL](https://github.com/openzklib/openzl)
 * [`halo2-lib` by Axiom](https://github.com/axiom-crypto/halo2-lib)
 * [`halo2-wrong` by PSE](https://github.com/privacy-scaling-explorations/halo2wrong)
 * [Plonky2](https://github.com/mir-protocol/plonky2)
@@ -39,11 +39,12 @@ other rust-based circuit building libraries
 The main difference between RCC and other circuit builders in Rust:
 * RCC works like Circom, where witness generation code is generated during
   circuit building. This enables parallelism for witness generation.
-* RCC focuses on ergonomics of circuit writing (see [traits](rcc/traits)) and
+* RCC focuses on ergonomics of circuit writing (see [traits](rcc/src/traits)) and
   provides command-line tools to work with circuits (TODO).
+
 The main difference between RCC and Circom:
 * Witness generator in RCC is not restricted to field operations and can be
-  arbitrary rust code,
+  arbitrary rust code.
 * RCC is not tied to a particular proving backend. It is relatively easy to
   write a new proving backend for RCC. RCC also aims to support all style of
   proof systems, from R1CS, Plonkish, to layered arithmetic circuits (e.g. GKR).
