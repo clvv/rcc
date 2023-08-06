@@ -17,3 +17,7 @@ halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shu
 
 [patch.crates-io]
 halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle" }
+
+[[bin]]
+name = "rcc-circuit"
+path = "circuits/circuit.rs"
