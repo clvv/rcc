@@ -61,8 +61,6 @@ impl Composer for MockComposer {
         }
     }
 
-    fn new_wire_to_column(&mut self, _: usize) -> Self::Wire { todo!() }
-
     fn register_input(&mut self, w: Self::Wire) {
         self.base_composer().unwrap().register_input(w.runtime_wire)
     }
@@ -105,22 +103,39 @@ impl MockComposer {
 
     /// Returns a TokenStream encoding a closure that computes all the witnesses
     pub fn compose_rust_witness_gen(&mut self) -> TokenStream {
+
         let prelude = quote! {
                 use ark_ff::{BigInt, Field, PrimeField};
                 use ark_bn254::Fr as F;
                 // runtime composer expects WireVal to be defined
                 type WireVal = F;
+                type Input = Vec<F>;
+                type AllWires = Vec<F>;
         };
 
+        let n = self.runtime_composer.wires.len();
+
         let (constant_values, constant_indices): (Vec<_>, Vec<_>) = self.constants.iter().map(|(v, w)| {
-            (v, w.runtime_wire.to_ref())
+            (v, w.runtime_wire.global_id)
         }).unzip();
 
         let constant_decl = quote! {
             #( (*wire(#constant_indices)) = F::from(BigInt!(#constant_values)) ; ) *
         };
 
-        self.runtime_composer.compose_rust_witness_gen(prelude, constant_decl)
+        let init = quote! {
+            let wires: Vec<WireVal> = vec![WireVal::default(); #n];
+
+            let wire = |id: usize| {
+                unsafe {
+                    &mut *(wires.get_unchecked(id) as *const WireVal as *mut WireVal)
+                }
+            };
+
+            #constant_decl;
+        };
+
+        self.runtime_composer.compose_rust_witness_gen(prelude, init)
     }
 }
 

@@ -1,8 +1,8 @@
 use rcc_mockcomposer::mock_composer::{MockComposer, MockWire, new_context_of};
 use rcc::{traits::AlgComposer, Composer};
 
-const N: usize = 100;
-const M: usize = 100;
+const N: usize = 1000;
+const M: usize = 1000;
 
 #[new_context_of(e)]
 // `mul_seq` is repeated `N` times in this circuit

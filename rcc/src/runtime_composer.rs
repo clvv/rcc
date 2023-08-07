@@ -8,8 +8,6 @@ use crate::{Composer, ContextMarker, Wire};
 /// It simply keeps track of its position
 pub struct RuntimeWire {
     pub global_id: usize,
-    pub column: usize,
-    pub row: usize,
     /// A hack to make the composer accessible when ToToken is run for the wire
     /// TODO: implement a custom quote macro and remove this
     composer_ptr: *mut RuntimeComposer
@@ -32,14 +30,6 @@ impl RuntimeWire {
         let last_context = e.context_stack.last_mut().unwrap();
         let id = last_context.format_and_mark_input(*self);
         quote! { (*wire(#id)) }
-    }
-
-    pub fn to_ref(&self) -> TokenStream {
-        let column = self.column;
-        let row = self.row;
-        quote! {
-            WireRef { column: #column, row: #row }
-        }
     }
 }
 
@@ -129,9 +119,8 @@ impl ComponentContext {
 pub struct RuntimeComposer {
     context_stack: Vec<ComponentContext>,
     compiled_contexts: IndexMap<String, ComponentContext>,
-    wires: Vec<RuntimeWire>,
+    pub wires: Vec<RuntimeWire>,
     input_wires: Vec<RuntimeWire>,
-    column_sizes: Vec<usize>,
 }
 
 impl Composer for RuntimeComposer {
@@ -140,26 +129,15 @@ impl Composer for RuntimeComposer {
 
     /// Allocate a new wire to a column and return it
     fn new_wire(&mut self) -> RuntimeWire {
-        self.new_wire_to_column(0)
-    }
-
-    /// Allocate a new wire to a column and return it
-    fn new_wire_to_column(&mut self, column: usize) -> RuntimeWire {
         let m = self.context_stack.first().unwrap().allocated;
         for context in self.context_stack.iter_mut() {
             context.allocated += 1;
         }
-        if column >= self.column_sizes.len() {
-            self.column_sizes.push(0);
-        }
         let w = RuntimeWire {
             global_id: m,
-            column,
-            row: self.column_sizes[column],
             composer_ptr: self as *mut RuntimeComposer
         };
         self.wires.push(w);
-        self.column_sizes[column] += 1;
         w
     }
 
@@ -204,7 +182,7 @@ impl Composer for RuntimeComposer {
         });
         let code = context.code.clone();
         let closure = quote! {
-            | #wires_var: &[WireRef], #( #binds ) ,* | {
+            | #wires_var: &[usize], #( #binds ) ,* | {
                 #code
             }
         };
@@ -251,60 +229,32 @@ impl RuntimeComposer {
 
     /// Returns a TokenStream encoding a closure that computes all the witnesses
     /// - `prelude` code sets up necessary imports and must set a type `WireVal`
-    /// - `init` code has access to a closure `wire: Fn(usize) -> &mut WireVal`
     pub fn compose_rust_witness_gen(&mut self, prelude: TokenStream, init: TokenStream) -> TokenStream {
         let defs = self.compiled_contexts.iter().map(|(_, c) | {
             c.code.clone()
         });
 
-        let context = self.context_stack.pop().unwrap();
-        let main = context.code;
+        let n = self.wires.len();
+        let main = self.context_stack.pop().unwrap().code;
 
-        let input_wires = self.input_wires.iter().map(|w| w.to_ref());
+        let input_wires = self.input_wires.iter().map(|w| w.global_id);
 
         let input_wires_indices = quote!( #( #input_wires ) ,* );
-
-        // let num_columns = self.column_sizes.len();
-        let num_rows_each_column = self.column_sizes.clone();
-
-        let wires_allocation = quote! {
-            let mut wires: Vec<Vec<WireVal>> = vec![];
-
-            #( wires.push(vec![WireVal::default(); #num_rows_each_column]) ) ;* ;
-        };
-
-        let wirerefs: Vec<TokenStream> = self.wires.iter().map(|w| w.to_ref()).collect();
 
         quote! {
             #prelude
 
-            #[derive(Copy, Clone)]
-            struct WireRef {
-                column: usize,
-                row: usize,
-            }
-
-            static wires_: &[WireRef] = &[ #( #wirerefs ) ,* ];
-
-            pub fn compute(inputs: Vec<WireVal>) -> Vec<Vec<WireVal>> {
-
-
-                #wires_allocation
-
-                let wire = |wf: WireRef| {
-                    unsafe {
-                        &mut *(wires.get_unchecked(wf.column).get_unchecked(wf.row) as *const WireVal as *mut WireVal)
-                    }
-                };
-
-                let input_wires = vec![#input_wires_indices];
-
-                input_wires.iter().zip(inputs).for_each(|(wf, val)| *wire(*wf) = val);
+            pub fn generate_witnesses(inputs: Input) -> AllWires {
 
                 #init
 
+                let input_wires = vec![#input_wires_indices];
+
+                input_wires.iter().zip(inputs).for_each(|(id, val)| *wire(*id) = val);
+
                 #( #defs )*
 
+                let wires_: &[usize] = &(0..#n).collect::<Vec<_>>();
                 #main;
 
                 wires

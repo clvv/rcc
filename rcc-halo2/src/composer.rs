@@ -48,10 +48,12 @@ pub struct H2Composer {
     constants: IndexMap<String, usize>,
     /// The selector column
     selectors: Vec<usize>,
-    /// The witness column, each cell is represened by a wire
+    /// The witness column, each cell is represented by a wire
+    witness: Vec<H2Wire>,
+    /// The public input column, each cell is represented by a wire
+    public: Vec<H2Wire>,
+    /// All wires
     wires: Vec<H2Wire>,
-    /// Number of element of the public column
-    num_public: usize,
     /// Plaf columns
     columns: Columns,
     /// List of copy constraints
@@ -61,6 +63,8 @@ pub struct H2Composer {
 #[derive(Clone, Copy)]
 pub struct H2Wire {
     id: usize,
+    column: usize,
+    row: usize,
     runtime_wire: RuntimeWire,
     composer_ptr: *mut H2Composer
 }
@@ -84,6 +88,15 @@ impl ToTokens for H2Wire {
     }
 }
 
+impl H2Wire {
+    pub fn to_ref(&self) -> TokenStream {
+        let column = self.column;
+        let row = self.row;
+        quote! {
+            WireRef { column: #column, row: #row }
+        }
+    }
+}
 
 /// This implements numerous default functions
 impl Composer for H2Composer {
@@ -98,19 +111,12 @@ impl Composer for H2Composer {
     fn new_wire(&mut self) -> Self::Wire {
         let w = Self::Wire {
             id: self.wires.len(),
+            column: 0,
+            row: self.witness.len(),
             runtime_wire: self.runtime_composer.new_wire(),
             composer_ptr: self as *mut H2Composer
         };
-        self.wires.push(w);
-        w
-    }
-
-    fn new_wire_to_column(&mut self, column: usize) -> Self::Wire {
-        let w = Self::Wire {
-            id: self.wires.len(),
-            runtime_wire: self.runtime_composer.new_wire_to_column(column),
-            composer_ptr: self as *mut H2Composer
-        };
+        self.witness.push(w);
         self.wires.push(w);
         w
     }
@@ -152,7 +158,7 @@ impl H2Composer {
 
     /// Fill the selector vector until it is of the same length as the witness vector
     fn fill_selectors(&mut self) {
-        let n = self.wires.len() - self.selectors.len();
+        let n = self.witness.len() - self.selectors.len();
         if n > 0 {
             self.selectors.extend((0..n).map(|_| 0))
         }
@@ -168,7 +174,7 @@ impl H2Composer {
     pub fn start_gate_with(&mut self, a: H2Wire) -> H2Wire {
         self.fill_selectors();
 
-        if a.id == self.wires.len() - 1 {
+        if a.id == self.witness.len() - 1 {
             // If a is latest witness wire, we can simply start the gate at a
             *self.selectors.last_mut().unwrap() = 1;
             self.selectors.extend([0, 0, 0].iter());
@@ -209,10 +215,19 @@ impl H2Composer {
 
     /// Copy a witness wire to the public column
     pub fn declare_public(&mut self, a: H2Wire) {
-        let w = self.runtime_composer.new_wire_to_column(1);
+        // We create a wire representing the public input wire but it is not accessible elsewhere
+        let w = H2Wire {
+            id: self.wires.len(),
+            // The first column is the public input column
+            column: 1,
+            row: self.public.len(),
+            runtime_wire: self.runtime_composer.new_wire(),
+            composer_ptr: self as *mut H2Composer
+        };
         self.runtime_composer.runtime(quote!( #w = #a; ));
-        self.copys[1].offsets.push((a.id, self.num_public));
-        self.num_public += 1;
+        self.copys[1].offsets.push((a.id, self.public.len()));
+        self.public.push(w);
+        self.wires.push(w);
     }
 
     /// Compose runtime code that logs the value of a wire
@@ -229,8 +244,8 @@ impl H2Composer {
     }
 
     pub fn gen_plaf(&self) -> Plaf {
-        if self.selectors.len() != self.wires.len() {
-            panic!("selector.len() = {}, wires.len() = {}", self.selectors.len(), self.wires.len());
+        if self.selectors.len() != self.witness.len() {
+            panic!("selector.len() = {}, wires.len() = {}", self.selectors.len(), self.witness.len());
         }
 
         let info = Info {
@@ -272,14 +287,31 @@ impl H2Composer {
 
     /// Returns a TokenStream encoding a closure that computes all the witnesses
     pub fn compose_rust_witness_gen(&mut self) -> TokenStream {
+        let wirerefs: Vec<TokenStream> = self.wires.iter().map(|w| w.to_ref()).collect();
+        let num_rows_each_column = vec![self.witness.len(), self.public.len()];
+
         let prelude = quote! {
-                use ark_ff::{BigInt, BigInteger, Field, PrimeField};
-                use ark_bn254::Fr as F;
-                // runtime composer expects WireVal to be defined
-                type WireVal = F;
+            use rcc_halo2::runtime::{WireVal, WireRef, F, *};
+
+            static ID_TO_REF: &[WireRef] = &[ #( #wirerefs ) ,* ];
         };
 
-        let init = quote!();
+        let init = quote! {
+            // Allocate the wires
+            let mut wires: Vec<Vec<WireVal>> = vec![];
+            #( wires.push(vec![WireVal::default(); #num_rows_each_column]) ) ;* ;
+
+            let wire = |id: usize| {
+                let wf = ID_TO_REF[id];
+                unsafe {
+                    &mut *(
+                        wires
+                        .get_unchecked(wf.column)
+                        .get_unchecked(wf.row) as *const WireVal as *mut WireVal
+                    )
+                }
+            };
+        };
 
         self.runtime_composer.compose_rust_witness_gen(prelude, init)
     }
