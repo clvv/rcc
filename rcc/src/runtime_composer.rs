@@ -82,7 +82,7 @@ impl ComponentContext {
     /// Print out runtime code accessing the allocated wire
     fn format_wire(&self, w: RuntimeWire) -> TokenStream {
         if let Some(index) = self.input_index(w) {
-            let id = format_ident!("in_{}_{}", self.name, index);
+            let id = quote!( input[#index] );
             quote! { #id }
         } else {
             let wires_var = format_ident!("wires_{}", self.name);
@@ -100,7 +100,8 @@ impl ComponentContext {
             if self.input_index(w) == None {
                 self.input_wires.push(w);
             }
-            let id = format_ident!("in_{}_{}", self.name, self.input_index(w).unwrap());
+            let index = self.input_index(w).unwrap();
+            let id = quote!( input[#index] );
             quote! { #id }
         } else {
             let wires_var = format_ident!("wires_{}", self.name);
@@ -177,12 +178,9 @@ impl Composer for RuntimeComposer {
     fn exit_context(&mut self) {
         let mut context = self.context_stack.pop().unwrap();
         let wires_var = format_ident!("wires_{}", context.name);
-        let binds = context.input_wires.iter().map(|w| {
-            context.format_wire(*w)
-        });
         let code = context.code.clone();
         let closure = quote! {
-            | #wires_var: &[usize], #( #binds ) ,* | {
+            | #wires_var: &[usize], input: &[usize] | {
                 #code
             }
         };
@@ -207,7 +205,7 @@ impl Composer for RuntimeComposer {
         let input_wires_iter = context.input_wires.iter().map(|w| {
             prev_context.format_and_mark_input(*w)
         });
-        let input_wires = quote!( #( #input_wires_iter ) ,* );
+        let input_wires = quote!( &[#( #input_wires_iter ) ,*] );
         let wires_var = format_ident!("wires_{}", prev_context.name);
         let start = context.var_start;
         let end = context.var_start + context.allocated;
