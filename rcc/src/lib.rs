@@ -55,6 +55,25 @@ pub trait Composer {
 
     /// Use this method for repeated (>1000) components to speed up compilation times
     /// Map f over N elements with new contexts for every sqrt(N) iterations
+    fn smart_map_base_10<T>(&mut self, iter: impl Iterator<Item = T>, mut f: impl FnMut(&mut Self, &T) -> ()) {
+        let items: Vec<T> = iter.collect();
+        let power = (items.len() as f64).log(10.0).ceil() as u32;
+        let step_sizes = (0..power).map(|i| 10usize.pow(power - i));
+        items.iter().enumerate().for_each(|(i, item)| {
+            let to_process = step_sizes.clone().filter(|size| i % size == 0);
+            if i > 0 {
+                to_process.clone().for_each(|_| self.exit_context());
+            }
+            to_process.for_each(|size| {
+                self.enter_context(format!("smart_loop_p{size}"));
+            });
+            f(self, item)
+        });
+        step_sizes.for_each(|_| self.exit_context());
+    }
+
+    /// Use this method for repeated (>1000) components to speed up compilation times
+    /// Map f over N elements with new contexts for every sqrt(N) iterations
     fn smart_map<T>(&mut self, iter: impl Iterator<Item = T>, mut f: impl FnMut(&mut Self, &T) -> ()) {
         let items: Vec<T> = iter.collect();
         let step_size = (items.len() as f64).sqrt() as usize;

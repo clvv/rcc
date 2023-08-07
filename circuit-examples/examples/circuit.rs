@@ -29,12 +29,17 @@ fn gen(e: &mut MockComposer, val: MockWire) -> Vec<(MockWire, MockWire)> where
     v
 }
 
+#[new_context_of(e)]
 pub fn my_circuit(e: &mut MockComposer) {
     let val = e.new_wire();
     e.register_input(val);
 
     let ab = gen(e, val);
 
+    // let mut c: Vec<MockWire> = vec![];
+    // e.smart_map(ab.iter(), |e, &(ai, bi)| {
+    //     c.push(mul_seq(e, *ai, *bi))
+    // });
     let c: Vec<MockWire> = ab.iter().map(|(ai, bi)| {
         mul_seq(e, *ai, *bi)
     }).collect();

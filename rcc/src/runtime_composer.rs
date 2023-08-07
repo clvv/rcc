@@ -214,7 +214,7 @@ impl Composer for RuntimeComposer {
 
         // invoke the compute closure
         self.runtime(quote! {
-            #closure_ident( #wires_var[#start..#end].try_into().unwrap(), #input_wires );
+            #closure_ident( &#wires_var[#start..#end], #input_wires );
         });
     }
 
