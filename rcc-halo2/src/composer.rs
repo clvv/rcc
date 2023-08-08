@@ -204,10 +204,8 @@ impl H2Composer {
             l
         };
         let w = self.new_wire();
-        // TODO
-        let v_bytes_be = v.into_bigint().to_bits_be();
-        let v_code = quote!( &[ #( #v_bytes_be ) ,* ] );
-        self.runtime_composer.runtime(quote!( #w = F::from(BigInt::from_bits_be(#v_code)); ));
+        let us = format!("{}", v.into_bigint());
+        self.runtime_composer.runtime(quote!( #w = F::from(BigInt!(#us)); ));
         self.copys[2].offsets.push((w.id, constant_index));
         w
     }

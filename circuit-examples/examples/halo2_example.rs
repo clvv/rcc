@@ -2,8 +2,8 @@ use rcc_halo2::composer::{H2Composer, H2Wire, component_of};
 use rcc::Composer;
 use rcc::traits::{AlgWire, AlgComposer};
 
-const N: usize = 2;
-const M: usize = 2;
+const N: usize = 10;
+const M: usize = 10;
 
 #[component_of(e)]
 // `mul_seq` is repeated `N` times in this circuit
