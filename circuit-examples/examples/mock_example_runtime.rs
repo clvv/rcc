@@ -1,6 +1,8 @@
 #![allow(unused_imports)]
+#![allow(unused_variables)]
 
-mod circuit_runtime_lib;
+mod mock_example_runtime_lib;
+use mock_example_runtime_lib::generate_witnesses;
 
 use ark_bn254::Fr as F;
 use std::env::args;
@@ -8,5 +10,5 @@ use std::env::args;
 fn main() {
     let args: Vec<String> = args().collect();
     let val = F::from(args.get(1).unwrap().parse::<i32>().unwrap());
-    circuit_runtime_lib::generate_witnesses(vec![val]);
+    generate_witnesses(vec![val]);
 }

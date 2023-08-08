@@ -69,7 +69,7 @@ pub trait AlgComposer: Composer {
     /// Maps any non-zero field element to one and zero to zero.
     fn to_bool(&mut self, a: Self::Wire) -> Self::Bool;
     /// Assert that the wire is boolean
-    fn check_bool(&mut self, a: Self::Wire) -> Self::Bool;
+    fn assert_bool(&mut self, a: Self::Wire) -> Self::Bool;
 
     // Below functions has default implementations that require two "sub constraints".
     // Backends can decide to provide more efficient variants.
@@ -210,9 +210,9 @@ pub trait BoolWire:
 {
     type AlgWire;
 
+    fn to_alg(&self) -> Self::AlgWire;
     fn then_or_else(&self, then: Self::AlgWire, els: Self::AlgWire) -> Self::AlgWire;
 }
-
 
 #[derive(Debug, Copy, Clone)]
 /// Default implementation of a boolean wire, generic over any AlgWire
@@ -248,6 +248,10 @@ impl<T: AlgWire> Not for Boolean<T> {
 
 impl<T: AlgWire> BoolWire for Boolean<T> {
     type AlgWire = T;
+
+    fn to_alg(&self) -> T {
+        self.0
+    }
 
     fn then_or_else(&self, then: T, els: T) -> T {
         self.0 * then + (-self.0 + 1) * els

@@ -263,7 +263,7 @@ impl AlgComposer for MockComposer {
         Boolean(a * b)
     }
 
-    fn check_bool(&mut self, a: MockWire) -> Self::Bool {
+    fn assert_bool(&mut self, a: MockWire) -> Self::Bool {
         a * (a - 1) == 0;
         Boolean(a)
     }

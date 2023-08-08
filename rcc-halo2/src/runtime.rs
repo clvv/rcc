@@ -1,7 +1,8 @@
 use polyexen::plaf::{ColumnWitness, Witness};
 
-pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
+pub use ark_ff::{BigInteger, BigInt, Field};
 pub use ark_bn254::Fr as F;
+pub use halo2_proofs::halo2curves::bn256::Fr;
 
 // runtime composer expects WireVal to be defined
 pub type WireVal = F;
@@ -14,17 +15,19 @@ pub struct WireRef {
     pub row: usize,
 }
 
-pub fn rcc_output_to_plaf_witness(mut wires: Vec<Vec<F>>) -> Witness {
-    // Removes the public column
-    wires.pop();
-    Witness {
-        num_rows: wires[0].len(),
-        columns: vec![ColumnWitness::new(String::from("witness"), 0)],
-        witness: wires.iter().map(|c| {
-            c.iter().map(|f| {
-                Some((*f).into())
+pub fn rcc_output_to_plaf_witness_and_instance(mut wires: Vec<Vec<F>>) -> (Witness, Vec<Vec<F>>) {
+    let instance = wires.pop().unwrap();
+    (
+        Witness {
+            num_rows: wires[0].len(),
+            columns: vec![ColumnWitness::new(String::from("witness"), 0)],
+            witness: wires.iter().map(|c| {
+                c.iter().map(|f| {
+                    Some((*f).into())
+                }).collect()
             }).collect()
-        }).collect()
-    }
+        },
+        vec![instance]
+    )
 }
 

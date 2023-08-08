@@ -79,19 +79,19 @@ impl ComponentContext {
         })
     }
 
-    /// Print out runtime code accessing the allocated wire
-    fn format_wire(&self, w: RuntimeWire) -> TokenStream {
-        if let Some(index) = self.input_index(w) {
-            let id = quote!( input[#index] );
-            quote! { #id }
-        } else {
-            let wires_var = format_ident!("wires_{}", self.name);
-            let id = w.global_id - self.global_start;
-            quote! {
-                #wires_var[#id]
-            }
-        }
-    }
+    // /// Print out runtime code accessing the allocated wire
+    // fn format_wire(&self, w: RuntimeWire) -> TokenStream {
+    //     if let Some(index) = self.input_index(w) {
+    //         let id = quote!( input[#index] );
+    //         quote! { #id }
+    //     } else {
+    //         let wires_var = format_ident!("wires_{}", self.name);
+    //         let id = w.global_id - self.global_start;
+    //         quote! {
+    //             #wires_var[#id]
+    //         }
+    //     }
+    // }
 
     /// Similar to above, but marks a wire as input if it has not been marked so
     fn format_and_mark_input(&mut self, w: RuntimeWire) -> TokenStream {
@@ -111,6 +111,33 @@ impl ComponentContext {
             }
         }
     }
+
+    //fn format_and_mark_inputs(&mut self, ws: Vec<RuntimeWire>) -> TokenStream {
+    //    let mut step;
+    //    let mut start = None;
+    //    let mut end = None;
+    //    ws.iter().for_each(|w| {
+    //        match (start, step) {
+    //            (None, None) => {
+    //                // Have not found the starting input wire
+    //                if self.global_start > w.global_id {
+    //                    // Input wire
+    //                    start = Some(self.input_index(w));
+    //                }
+    //            },
+    //            (Some(i), None) => {
+    //                if self.global_start > w.global_id {
+    //                    step = w.global_id - i
+    //                }
+    //            }
+    //        }
+    //    })
+    //    while let n = ws.next() {
+    //        if self.global_start <= w.global_id {
+
+    //        }
+    //    }
+    //}
 }
 
 /// The RuntimeComposer is a helper that helps the ciruict builder to mange

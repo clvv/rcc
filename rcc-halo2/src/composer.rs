@@ -3,7 +3,7 @@
 
 use num_bigint::BigUint;
 use rcc::traits::AlgComposer;
-use std::ops::{Add, Sub, Mul, Neg};
+use std::{ops::{Add, Sub, Mul, Neg}, path::PathBuf};
 use polyexen::expr::{Column, ColumnKind, ColumnQuery, Expr, PlonkVar};
 use polyexen::plaf::{
     ColumnFixed, ColumnWitness, ColumnPublic, Columns, Info, Plaf, Poly, CopyC
@@ -45,7 +45,7 @@ fn pc(index: usize) -> Column {
 pub struct H2Composer {
     runtime_composer: RuntimeComposer,
     /// Maps field element to their position in the constant column
-    constants: IndexMap<String, usize>,
+    constants: IndexMap<F, usize>,
     /// The selector column
     selectors: Vec<usize>,
     /// The witness column, each cell is represented by a wire
@@ -196,12 +196,11 @@ impl H2Composer {
 
     /// Add a new wire to the witness column that is constraint to `v`
     pub fn new_constant_wire(&mut self, v: F) -> H2Wire {
-        let key = format!("{}", v.into_bigint());
-        let constant_index = if self.constants.contains_key(&key) {
-            *self.constants.get(&key).unwrap()
+        let constant_index = if self.constants.contains_key(&v) {
+            *self.constants.get(&v).unwrap()
         } else {
             let l = self.constants.len();
-            self.constants.insert(key, l);
+            self.constants.insert(v, l);
             l
         };
         let w = self.new_wire();
@@ -243,6 +242,11 @@ impl H2Composer {
         println!("Plaf TOML:\n{}", PlafDisplayBaseTOML(&plaf));
     }
 
+    pub fn format_plaf(&self) -> String {
+        let plaf = self.gen_plaf();
+        toml::to_string(&plaf).unwrap()
+    }
+
     pub fn gen_plaf(&self) -> Plaf {
         if self.selectors.len() != self.witness.len() {
             panic!("selector.len() = {}, wires.len() = {}", self.selectors.len(), self.witness.len());
@@ -266,7 +270,7 @@ impl H2Composer {
         };
 
         let selectors: Vec<_> = self.selectors.iter().map(|&u| Some(BigUint::from(u))).collect();
-        let mut constants: Vec<_> = self.constants.iter().map(|(_, &u)| Some(BigUint::from(u))).collect();
+        let mut constants: Vec<_> = self.constants.iter().map(|(c, _)| Some((*c).into())).collect();
 
         let n = selectors.len() - constants.len();
         if n > 0 {
@@ -314,6 +318,26 @@ impl H2Composer {
         };
 
         self.runtime_composer.compose_rust_witness_gen(prelude, init)
+    }
+
+    /// Write out circuit config to path
+    pub fn write_config(&mut self, path: PathBuf) {
+        use rust_format::{Formatter, RustFmt};
+        use crate::plaf::serialize;
+
+        let name = path.file_stem().unwrap().to_str().unwrap();
+
+        let plaf = serialize(self.gen_plaf());
+        let mut plaf_path = path.clone();
+        plaf_path.set_file_name(format!("{name}_config.toml"));
+        std::fs::write(plaf_path, plaf).expect("Unable to write file");
+
+        let witness_gen_code = self.compose_rust_witness_gen();
+        let lib = format!("{}", witness_gen_code);
+        let formatted = RustFmt::default().format_str(lib).unwrap();
+        let mut runtime_lib_path = path.clone();
+        runtime_lib_path.set_file_name(format!("{name}_runtime_lib.rs"));
+        std::fs::write(runtime_lib_path, formatted).expect("Unable to write file");
     }
 }
 
@@ -485,7 +509,7 @@ impl AlgComposer for H2Composer {
         Boolean(a * b)
     }
 
-    fn check_bool(&mut self, a: H2Wire) -> Self::Bool {
+    fn assert_bool(&mut self, a: H2Wire) -> Self::Bool {
         a * (a - 1) == 0;
         Boolean(a)
     }

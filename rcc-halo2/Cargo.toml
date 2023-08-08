@@ -12,20 +12,26 @@ rcc-macro = { path = "../rcc-macro" }
 num-bigint = "^0.4"
 ark-ff = "^0.4"
 ark-bn254 = "^0.4"
-polyexen = { git = "https://github.com/Dhole/polyexen", branch = "feature/shuffles" }
+# polyexen = { git = "https://github.com/Dhole/polyexen", branch = "feature/shuffles" }
+polyexen = { git = "https://github.com/clvv/polyexen", branch = "serde" }
+# polyexen = { path = "../../polyexen" }
 # halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2.git", features = ["circuit-params"], rev = "d3746109d7d38be53afc8ddae8fdfaf1f02ad1d7" }
 # halo2_proofs = "0.2"
 halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2.git" }
 # halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle" }
 # halo2_curves = { git = "https://github.com/privacy-scaling-explorations/halo2curves", tag = "0.3.3", package = "halo2curves" }
 snark-verifier = { git = "https://github.com/privacy-scaling-explorations/snark-verifier" }
+toml = "0.7.6"
+rust-format = "0.3.4"
+ff = "0.13.0"
 
 [patch."https://github.com/privacy-scaling-explorations/halo2.git"]
 # TODO change back to this once the PR is merged
 # halo2_proofs = { git = "https://github.com/appliedzkp/halo2.git", rev = "d3746109d7d38be53afc8ddae8fdfaf1f02ad1d7" }
-halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle" }
+halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle"}
 
 [patch.crates-io]
 # TODO change back to this once the PR is merged
 # halo2_proofs = { git = "https://github.com/appliedzkp/halo2.git", rev = "d3746109d7d38be53afc8ddae8fdfaf1f02ad1d7" }
-halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle" }
+halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle"}
+
