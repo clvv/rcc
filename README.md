@@ -54,46 +54,22 @@ The main difference between RCC and Circom:
 The high-level flow is as follows:
 
 ```
-                                           ┌─────────────────┐
-                                       ┌──►│ circuit_config  │
-                                       │   └─────────────────┘
-                                       │
-                                       │
-┌──────────────┐ rustc   ┌───────────┐ │   ┌─────────────────┐  rustc   ┌──────────┐    ┌───────────┐
-│  circuit.rs  ├─────────┤  binary   ├─┴──►│ runtime.rs      ├─────────►│ runtime  ├───►│ witnesses │
-└──────────────┘         └───────────┘     └─────────────────┘          └─────▲────┘    └───────────┘
-                                                                              │
-                                                                              │
-                                                                              │
-                                                                     ┌────────┴────────┐
-                                                                     │ input           │
-                                                                     └─────────────────┘
+                                       ┌────────────────┐
+                                   ┌──►│ circuit_config │
+                                   │   └────────────────┘
+                                   │
+                                   │
+┌─────────────┐ rustc ┌──────────┐ │   ┌────────────────┐ rustc   ┌──────────┐    ┌───────────┐
+│ circuit.rs  ├───────┤  binary  ├─┴──►│ runtime_lib.rs ├────────►│ runtime  ├───►│ witnesses │
+└─────────────┘       └──────────┘     └────────────────┘         └─────▲────┘    └───────────┘
+                                                                        │
+                                                                        │
+                                                                        │
+                                                                  ┌─────┴────┐
+                                                                  │  input   │
+                                                                  └──────────┘
 ```
-
-To compile the demo circuit specified in `circuit-examples/examples/circuit.rs` file, `cd` into `circuit-examples` and run
-
-```
-cargo run --release --example circuit
-```
-
-To compile and run witness generation binary (generated at `examples/circuit_runtime.rs`) file with input 999, run
-
-```
-cargo run --release --example circuit_runtime 999
-```
-
-## Circuit Component
-
-A circuit component is a function that
-- Takes input a mutable reference to a composer
-  - The composer exposes interfaces for circuit building
-- Takes arbitrary input, including data structures over `Wire`
-- Gives arbitrary outputs, including data structures over `Wire`
-
-A circuit component can call other circuit components. However, recursive calls
-are not allowed.
 
 ## Example circuits
 
-Example circuits can be found in [`circuit-examples`](circuit-examples).
-
+Example circuits and instructions to compile them can be found in [`circuit-examples`](circuit-examples).
