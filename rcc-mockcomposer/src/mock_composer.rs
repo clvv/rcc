@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean, AlgComposer}, impl_alg_op};
 
 pub use rcc::Composer;
-pub use rcc_macro::new_context_of;
+pub use rcc_macro::component_of;
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
 pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
@@ -143,7 +143,7 @@ impl AlgComposer for MockComposer {
     type Constant = F;
     type Bool = Boolean<Self::Wire>;
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Mock add gadget
     fn add(&mut self, a: MockWire, b: MockWire) -> MockWire {
         let c = self.new_wire();
@@ -154,7 +154,7 @@ impl AlgComposer for MockComposer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Mock add const gadget
     fn add_const(&mut self, a: MockWire, b: F) -> MockWire {
         let b = self.new_constant_wire(b);
@@ -168,7 +168,7 @@ impl AlgComposer for MockComposer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Mock sub gadget
     fn sub(&mut self, a: MockWire, b: MockWire) -> MockWire {
         let c = self.new_wire();
@@ -180,7 +180,7 @@ impl AlgComposer for MockComposer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Mock sub_const gadget
     fn sub_const(&mut self, a: MockWire, b: F) -> MockWire {
         let b = self.new_constant_wire(b);
@@ -194,7 +194,7 @@ impl AlgComposer for MockComposer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Mock mul gadget
     fn mul(&mut self, a: MockWire, b: MockWire) -> MockWire {
         let c = self.new_wire();
@@ -205,7 +205,7 @@ impl AlgComposer for MockComposer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Mock sub_const gadget
     fn mul_const(&mut self, a: MockWire, b: F) -> MockWire {
         let b = self.new_constant_wire(b);
@@ -219,7 +219,7 @@ impl AlgComposer for MockComposer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Mock inv gadget
     fn inv_or_panic(&mut self, a: MockWire) -> MockWire {
         let b = self.new_wire();
@@ -231,7 +231,7 @@ impl AlgComposer for MockComposer {
         b
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     fn inv_or_any(&mut self, a: MockWire) -> MockWire {
         let b = self.new_wire();
         self.runtime(quote! {

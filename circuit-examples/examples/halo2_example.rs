@@ -1,11 +1,11 @@
-use rcc_halo2::composer::{H2Composer, H2Wire, new_context_of};
+use rcc_halo2::composer::{H2Composer, H2Wire, component_of};
 use rcc::Composer;
 use rcc::traits::{AlgWire, AlgComposer};
 
 const N: usize = 2;
 const M: usize = 2;
 
-#[new_context_of(e)]
+#[component_of(e)]
 // `mul_seq` is repeated `N` times in this circuit
 // Encapsulates a new context to speed up compilation of witness gen code
 // Try removing this and test compilation speed
@@ -19,7 +19,7 @@ where W: AlgWire, C: Composer<Wire = W>
     v[M]
 }
 
-#[new_context_of(e)]
+#[component_of(e)]
 fn gen<C, W>(e: &mut C, val: W) -> Vec<(W, W)>
 where W: AlgWire, C: Composer<Wire = W>
 {
@@ -33,7 +33,7 @@ where W: AlgWire, C: Composer<Wire = W>
     v
 }
 
-#[new_context_of(e)]
+#[component_of(e)]
 pub fn my_circuit(e: &mut H2Composer) {
     let val = e.new_wire();
     e.register_input(val);

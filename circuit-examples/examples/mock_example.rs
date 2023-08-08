@@ -1,10 +1,10 @@
-use rcc_mockcomposer::mock_composer::{MockComposer, MockWire, new_context_of};
+use rcc_mockcomposer::mock_composer::{MockComposer, MockWire, component_of};
 use rcc::{traits::AlgComposer, Composer};
 
 const N: usize = 1000;
 const M: usize = 1000;
 
-#[new_context_of(e)]
+#[component_of(e)]
 // `mul_seq` is repeated `N` times in this circuit
 // Encapsulates a new context to speed up compilation of witness gen code
 // Try removing this and test compilation speed
@@ -16,7 +16,7 @@ fn mul_seq(e: &mut MockComposer, a: MockWire, b: MockWire) -> MockWire {
     v[M]
 }
 
-#[new_context_of(e)]
+#[component_of(e)]
 fn gen(e: &mut MockComposer, val: MockWire) -> Vec<(MockWire, MockWire)> where
 {
     let mut v = vec![];
@@ -29,7 +29,7 @@ fn gen(e: &mut MockComposer, val: MockWire) -> Vec<(MockWire, MockWire)> where
     v
 }
 
-#[new_context_of(e)]
+#[component_of(e)]
 pub fn my_circuit(e: &mut MockComposer) {
     let val = e.new_wire();
     e.register_input(val);

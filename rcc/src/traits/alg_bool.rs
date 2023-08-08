@@ -1,5 +1,5 @@
 pub use crate::{Composer, Wire};
-use rcc_macro::new_context_of;
+use rcc_macro::component_of;
 
 use std::ops::{Add, Sub, Mul, Neg, BitAnd, BitOr, BitXor, Not};
 
@@ -82,7 +82,7 @@ pub trait AlgComposer: Composer {
         self.inv_or_panic(c);
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     fn sum(&mut self, wires: Vec<Self::Wire>) -> Self::Wire {
         let mut running_sum = wires[0];
         self.smart_map(wires.iter(), |e, &&w| {
@@ -91,7 +91,7 @@ pub trait AlgComposer: Composer {
         running_sum
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     fn prod(&mut self, wires: Vec<Self::Wire>) -> Self::Wire {
         let mut running_prod = wires[0];
         self.smart_map(wires.iter(), |e, &&w| {

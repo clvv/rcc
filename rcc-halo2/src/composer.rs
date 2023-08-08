@@ -18,7 +18,7 @@ pub use ark_bn254::Fr as F;
 use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean}, impl_alg_op};
 
 pub use rcc::Composer;
-pub use rcc_macro::new_context_of;
+pub use rcc_macro::component_of;
 pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
 
 fn fc(index: usize) -> Column {
@@ -345,7 +345,7 @@ impl AlgComposer for H2Composer {
     type Constant = F;
     type Bool = Boolean<Self::Wire>;
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Add gadget
     fn add(&mut self, a: H2Wire, b: H2Wire) -> H2Wire {
         let ap = self.start_gate_with(a);
@@ -360,7 +360,7 @@ impl AlgComposer for H2Composer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Add const gadget
     fn add_const(&mut self, a: H2Wire, b: F) -> H2Wire {
         let ap = self.start_gate_with(a);
@@ -375,7 +375,7 @@ impl AlgComposer for H2Composer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Sub gadget
     fn sub(&mut self, a: H2Wire, b: H2Wire) -> H2Wire {
         let ap = self.start_gate_with(a);
@@ -390,7 +390,7 @@ impl AlgComposer for H2Composer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Sub_const gadget
     fn sub_const(&mut self, a: H2Wire, b: F) -> H2Wire {
         let ap = self.start_gate_with(a);
@@ -405,7 +405,7 @@ impl AlgComposer for H2Composer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Mul gadget
     fn mul(&mut self, a: H2Wire, b: H2Wire) -> H2Wire {
         let zero = self.new_constant_wire(0.into());
@@ -421,7 +421,7 @@ impl AlgComposer for H2Composer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Mul const gadget
     fn mul_const(&mut self, a: H2Wire, b: F) -> H2Wire {
         let zero = self.new_constant_wire(0.into());
@@ -437,7 +437,7 @@ impl AlgComposer for H2Composer {
         c
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     fn assert_eq(&mut self, a: H2Wire, b: H2Wire) {
         let ap = self.start_gate_with(a);
         let _zero = self.new_constant_wire(0.into());
@@ -445,7 +445,7 @@ impl AlgComposer for H2Composer {
         let _bp = self.new_wire_from(b);
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     fn assert_eq_const(&mut self, a: H2Wire, b: F) {
         let ap = self.start_gate_with(a);
         let _zero = self.new_constant_wire(0.into());
@@ -453,7 +453,7 @@ impl AlgComposer for H2Composer {
         let _bp = self.new_constant_wire(b);
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     fn assert_ne_const(&mut self, a: H2Wire, b: F) {
         let ap = self.start_gate_with(a);
         let _zero = self.new_constant_wire(0.into());
@@ -461,7 +461,7 @@ impl AlgComposer for H2Composer {
         let _bp = self.new_constant_wire(b);
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Inv gadget
     /// If `a` is `0` at runtime, constraint system cannot be satisfied
     fn inv_or_panic(&mut self, a: H2Wire) -> H2Wire {
@@ -478,7 +478,7 @@ impl AlgComposer for H2Composer {
         b
     }
 
-    #[new_context_of(self)]
+    #[component_of(self)]
     /// Inv gadget
     /// If `a` is `0` at runtime, return wire can hold arbitrary value
     fn inv_or_any(&mut self, a: H2Wire) -> H2Wire {
