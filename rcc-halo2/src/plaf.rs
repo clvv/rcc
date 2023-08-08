@@ -47,11 +47,3 @@ pub fn deserialize(s: String) -> Plaf {
     toml::from_str(&s).unwrap()
 }
 
-#[test]
-fn test_toml_read() {
-    let s = std::fs::read_to_string("../circuit-examples/examples/circuit2_config.toml").expect("Cannot read plaf file");
-
-    let plaf: Plaf = deserialize(s);
-
-    println!("{:?}", plaf);
-}
