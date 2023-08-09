@@ -140,6 +140,12 @@ impl ComponentContext {
     //}
 }
 
+#[derive(Clone, Debug)]
+pub enum InputWireType {
+    Singleton(RuntimeWire),
+    Vector(Vec<RuntimeWire>)
+}
+
 /// The RuntimeComposer is a helper that helps the ciruict builder to mange
 /// (1) allocation of witnesses (called wires)
 /// (2) runtime code that generates the above allocated witnesses from a small set input wires
@@ -148,7 +154,7 @@ pub struct RuntimeComposer {
     context_stack: Vec<ComponentContext>,
     compiled_contexts: IndexMap<String, ComponentContext>,
     pub wires: Vec<RuntimeWire>,
-    input_wires: Vec<RuntimeWire>,
+    input_wires: IndexMap<String, InputWireType>,
 }
 
 impl Composer for RuntimeComposer {
@@ -170,9 +176,23 @@ impl Composer for RuntimeComposer {
     }
 
     /// Register a wire as an input wire
-    fn register_input(&mut self, w: RuntimeWire) {
-        self.input_wires.push(w)
+    fn input_wire(&mut self, name: String) -> RuntimeWire {
+        assert!(!self.input_wires.contains_key(&name), "Cannot declare the same input wire twice.");
+        let w = self.new_wire();
+        self.input_wires.insert(name, InputWireType::Singleton(w));
+        w
     }
+
+    /// Register a wire as an input wire
+    fn input_wires(&mut self, name: String, n: usize) -> Vec<RuntimeWire> {
+        assert!(!self.input_wires.contains_key(&name), "Cannot declare the same input wire twice.");
+        let ws = self.new_wires(n);
+        self.input_wires.insert(name, InputWireType::Vector(ws.clone()));
+        ws
+    }
+
+    /// The runtime composer simply ignores this request here
+    fn declare_public(&mut self, _: RuntimeWire) { }
 
     /// Enters into a new context and exits automatically when the returned marker is dropped
     fn new_context(&mut self, name: String) -> ContextMarker {
@@ -262,20 +282,31 @@ impl RuntimeComposer {
         let n = self.wires.len();
         let main = self.context_stack.pop().unwrap().code;
 
-        let input_wires = self.input_wires.iter().map(|w| w.global_id);
-
-        let input_wires_indices = quote!( #( #input_wires ) ,* );
+        let set_input_wires = self.input_wires.iter().map(|(ref key, ref input)| {
+            match input {
+                InputWireType::Singleton(w) => {
+                    let id = w.global_id;
+                    quote!( *wire(#id) = *inputs.get(#key).unwrap())
+                },
+                InputWireType::Vector(ws) => {
+                    let mut ts = quote!( #( let vs = inputs.get(#key).unwrap(); ));
+                    for (i, w) in ws.iter().enumerate() {
+                        let id = w.global_id;
+                        ts.extend( quote!( *wire(#id) = *vs[#i]; ) );
+                    }
+                    ts
+                }
+            }
+        });
 
         quote! {
             #prelude
 
-            pub fn generate_witnesses(inputs: Input) -> AllWires {
+            pub fn generate_witnesses(inputs: std::collections::HashMap<String, F>) -> AllWires {
 
                 #init
 
-                let input_wires = vec![#input_wires_indices];
-
-                input_wires.iter().zip(inputs).for_each(|(id, val)| *wire(*id) = val);
+                #( #set_input_wires ) ;* ;
 
                 #( #defs )*
 

@@ -109,21 +109,39 @@ impl Composer for H2Composer {
 
     /// Allocated a new wire and return it
     fn new_wire(&mut self) -> Self::Wire {
-        let w = Self::Wire {
+        let w = self.runtime_composer.new_wire();
+        self.new_wire_from_runtime_wire(w)
+    }
+
+    /// Allocate a new input wire under name `name`
+    fn input_wire(&mut self, name: String) -> Self::Wire {
+        let w = self.runtime_composer.input_wire(name);
+        self.new_wire_from_runtime_wire(w)
+    }
+
+    /// Allocate a new vector of input wires under name `name`
+    fn input_wires(&mut self, name: String, num: usize) -> Vec<Self::Wire> {
+        let runtime_wires = self.runtime_composer.input_wires(name, num);
+        runtime_wires.iter().map(|&w| self.new_wire_from_runtime_wire(w)).collect()
+    }
+
+    /// Copy a witness wire to the public column
+    fn declare_public(&mut self, a: H2Wire) {
+        // We create a wire representing the public input wire but it is not accessible elsewhere
+        let w = H2Wire {
             id: self.wires.len(),
-            column: 0,
-            row: self.witness.len(),
+            // The first column is the public input column
+            column: 1,
+            row: self.public.len(),
             runtime_wire: self.runtime_composer.new_wire(),
             composer_ptr: self as *mut H2Composer
         };
-        self.witness.push(w);
+        self.runtime_composer.runtime(quote!( #w = #a; ));
+        self.copys[1].offsets.push((a.id, self.public.len()));
+        self.public.push(w);
         self.wires.push(w);
-        w
     }
 
-    fn register_input(&mut self, w: Self::Wire) {
-        self.base_composer().unwrap().register_input(w.runtime_wire)
-    }
 }
 
 impl H2Composer {
@@ -154,6 +172,19 @@ impl H2Composer {
 
         c.runtime_composer = RuntimeComposer::new();
         c
+    }
+
+    fn new_wire_from_runtime_wire(&mut self, rt_wire: RuntimeWire) -> H2Wire {
+        let w = H2Wire {
+            id: self.wires.len(),
+            column: 0,
+            row: self.witness.len(),
+            runtime_wire: rt_wire,
+            composer_ptr: self as *mut H2Composer
+        };
+        self.witness.push(w);
+        self.wires.push(w);
+        w
     }
 
     /// Fill the selector vector until it is of the same length as the witness vector
@@ -208,23 +239,6 @@ impl H2Composer {
         self.runtime_composer.runtime(quote!( #w = F::from(BigInt!(#us)); ));
         self.copys[2].offsets.push((w.id, constant_index));
         w
-    }
-
-    /// Copy a witness wire to the public column
-    pub fn declare_public(&mut self, a: H2Wire) {
-        // We create a wire representing the public input wire but it is not accessible elsewhere
-        let w = H2Wire {
-            id: self.wires.len(),
-            // The first column is the public input column
-            column: 1,
-            row: self.public.len(),
-            runtime_wire: self.runtime_composer.new_wire(),
-            composer_ptr: self as *mut H2Composer
-        };
-        self.runtime_composer.runtime(quote!( #w = #a; ));
-        self.copys[1].offsets.push((a.id, self.public.len()));
-        self.public.push(w);
-        self.wires.push(w);
     }
 
     /// Compose runtime code that logs the value of a wire

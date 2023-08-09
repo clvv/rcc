@@ -14,8 +14,9 @@ use rcc_halo2::prover::mock_prove;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let val = F::from(args.get(1).unwrap().parse::<i32>().unwrap());
-    let wires = generate_witnesses(vec![val]);
+    let mut inputs = std::collections::HashMap::<String, F>::new();
+    inputs.insert("val".into(), F::from(args.get(1).unwrap().parse::<i32>().unwrap()));
+    let wires = generate_witnesses(inputs);
     let (witness, instance) = rcc_output_to_plaf_witness_and_instance(wires);
     let plaf_string = std::fs::read_to_string("examples/halo2_example_config.toml").expect("Cannot read plaf file");
     let plaf = deserialize(plaf_string);

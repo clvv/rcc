@@ -55,15 +55,23 @@ impl Composer for MockComposer {
     /// Allocated a new wire and return it
     fn new_wire(&mut self) -> Self::Wire {
         // TODO: add wire to constraint system here
-        Self::Wire {
-            runtime_wire: self.runtime_composer.new_wire(),
-            composer_ptr: self as *mut MockComposer
-        }
+        let w = self.runtime_composer.new_wire();
+        self.new_wire_from_runtime_wire(w)
     }
 
-    fn register_input(&mut self, w: Self::Wire) {
-        self.base_composer().unwrap().register_input(w.runtime_wire)
+    fn input_wire(&mut self, name: String) -> Self::Wire {
+        let w = self.runtime_composer.input_wire(name);
+        self.new_wire_from_runtime_wire(w)
     }
+
+    fn input_wires(&mut self, name: String, n: usize) -> Vec<Self::Wire> {
+        let ws = self.runtime_composer.input_wires(name, n);
+        ws.iter().map(|&w| {
+            self.new_wire_from_runtime_wire(w)
+        }).collect()
+    }
+
+    fn declare_public(&mut self, _: Self::Wire) { }
 }
 
 impl MockComposer {
@@ -71,6 +79,13 @@ impl MockComposer {
         let mut s = Self::default();
         s.runtime_composer = RuntimeComposer::new();
         s
+    }
+
+    fn new_wire_from_runtime_wire(&mut self, w: RuntimeWire) -> MockWire {
+        MockWire {
+            runtime_wire: w,
+            composer_ptr: self as *mut MockComposer
+        }
     }
 
     /// Allocated a constant wire
@@ -109,7 +124,7 @@ impl MockComposer {
                 use ark_bn254::Fr as F;
                 // runtime composer expects WireVal to be defined
                 type WireVal = F;
-                type Input = Vec<F>;
+                type Input = std::collections::HashMap<String, F>;
                 type AllWires = Vec<F>;
         };
 
