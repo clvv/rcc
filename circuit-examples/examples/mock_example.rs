@@ -1,5 +1,5 @@
 use rcc_mockcomposer::mock_composer::{MockComposer, MockWire, component_of};
-use rcc::{traits::AlgComposer, Composer};
+use rcc::{Wire, traits::AlgComposer, Composer};
 
 const N: usize = 1000;
 const M: usize = 1000;
@@ -45,7 +45,7 @@ pub fn my_circuit(e: &mut MockComposer) {
 
     let sum = e.sum(c);
 
-    e.log(sum);
+    sum.declare_public("sum");
 }
 
 fn main() {

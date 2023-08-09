@@ -71,7 +71,9 @@ impl Composer for MockComposer {
         }).collect()
     }
 
-    fn declare_public(&mut self, _: Self::Wire) { }
+    fn declare_public(&mut self, w: Self::Wire, name: &str) {
+        self.runtime_composer.declare_public(w.runtime_wire, name);
+    }
 }
 
 impl MockComposer {
@@ -124,7 +126,6 @@ impl MockComposer {
                 use ark_bn254::Fr as F;
                 // runtime composer expects WireVal to be defined
                 type WireVal = F;
-                type Input = std::collections::HashMap<String, F>;
                 type AllWires = Vec<F>;
         };
 

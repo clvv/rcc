@@ -8,6 +8,9 @@ pub mod traits;
 pub trait Wire: Sized + Copy + Clone {
     type Composer: Composer<Wire = Self>;
     fn composer(&self) -> &mut <Self as Wire>::Composer;
+    fn declare_public(self, name: &str) {
+        self.composer().declare_public(self, name);
+    }
 }
 
 /// Composer trait
@@ -27,7 +30,7 @@ pub trait Composer {
 
     fn input_wire(&mut self, name: &str) -> Self::Wire;
     fn input_wires(&mut self, name: &str, num: usize) -> Vec<Self::Wire> ;
-    fn declare_public(&mut self, w: Self::Wire);
+    fn declare_public(&mut self, w: Self::Wire, name: &str);
 
     fn enter_context(&mut self, name: String) {
         if let Some(e) = self.base_composer() {
@@ -102,7 +105,7 @@ impl Composer for () {
 
     fn input_wire(&mut self, _: &str) -> () {  }
     fn input_wires(&mut self, _: &str, _: usize) -> Vec<()> { Vec::new() }
-    fn declare_public(&mut self, _: ()) -> () { }
+    fn declare_public(&mut self, _: (), _: &str) -> () { }
 }
 
 /// A hack to keep automatically call a function when a Rust context exits

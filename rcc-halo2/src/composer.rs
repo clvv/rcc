@@ -126,7 +126,7 @@ impl Composer for H2Composer {
     }
 
     /// Copy a witness wire to the public column
-    fn declare_public(&mut self, a: H2Wire) {
+    fn declare_public(&mut self, a: H2Wire, name: &str) {
         // We create a wire representing the public input wire but it is not accessible elsewhere
         let w = H2Wire {
             id: self.wires.len(),
@@ -141,7 +141,6 @@ impl Composer for H2Composer {
         self.public.push(w);
         self.wires.push(w);
     }
-
 }
 
 impl H2Composer {

@@ -1,5 +1,5 @@
 use rcc_halo2::composer::{H2Composer, H2Wire, component_of};
-use rcc::Composer;
+use rcc::{Composer, Wire};
 use rcc::traits::{AlgWire, AlgComposer};
 
 const N: usize = 10;
@@ -45,8 +45,8 @@ pub fn my_circuit(e: &mut H2Composer) {
 
     let sum = e.sum(c);
 
-    e.declare_public(val);
-    e.declare_public(sum);
+    val.declare_public("val");
+    sum.declare_public("sum");
 }
 
 fn main() {

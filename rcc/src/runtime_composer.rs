@@ -155,6 +155,7 @@ pub struct RuntimeComposer {
     compiled_contexts: IndexMap<String, ComponentContext>,
     pub wires: Vec<RuntimeWire>,
     input_wires: IndexMap<String, InputWireType>,
+    public_wires: IndexMap<String, RuntimeWire>
 }
 
 impl Composer for RuntimeComposer {
@@ -192,7 +193,9 @@ impl Composer for RuntimeComposer {
     }
 
     /// The runtime composer simply ignores this request here
-    fn declare_public(&mut self, _: RuntimeWire) { }
+    fn declare_public(&mut self, w: RuntimeWire, name: &str) {
+        self.public_wires.insert(name.into(), w);
+    }
 
     /// Enters into a new context and exits automatically when the returned marker is dropped
     fn new_context(&mut self, name: String) -> ContextMarker {
@@ -286,7 +289,7 @@ impl RuntimeComposer {
             match input {
                 InputWireType::Singleton(w) => {
                     let id = w.global_id;
-                    quote!( *wire(#id) = *inputs.get(#key).unwrap())
+                    quote!( *wire(#id) = *inputs.get(#key).unwrap(); )
                 },
                 InputWireType::Vector(ws) => {
                     let mut ts = quote!( #( let vs = inputs.get(#key).unwrap(); ));
@@ -299,21 +302,34 @@ impl RuntimeComposer {
             }
         });
 
+        let set_public_wires = self.public_wires.iter().map(|(key, wire)| {
+            let id = wire.global_id;
+            quote!( public.insert(#key.into(), *wire(#id)); )
+        });
+
         quote! {
             #prelude
 
-            pub fn generate_witnesses(inputs: std::collections::HashMap<String, F>) -> AllWires {
+            use std::collections::HashMap;
+            type Input = HashMap<String, F>;
+            type Public = HashMap<String, F>;
+
+            pub fn generate_witnesses(inputs: Input) -> (AllWires, Public) {
 
                 #init
 
-                #( #set_input_wires ) ;* ;
+                #( #set_input_wires )* ;
 
                 #( #defs )*
 
                 let wires_: &[usize] = &(0..#n).collect::<Vec<_>>();
                 #main;
 
-                wires
+                let mut public: Public = HashMap::new();
+
+                #( #set_public_wires )* ;
+
+                (wires, public)
             }
         }
     }

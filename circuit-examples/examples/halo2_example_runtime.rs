@@ -2,6 +2,7 @@
 #![allow(unused_parens)]
 #![allow(non_upper_case_globals)]
 #![allow(unused_variables)]
+#![allow(unused_mut)]
 
 mod halo2_example_runtime_lib;
 use halo2_example_runtime_lib::generate_witnesses;
@@ -16,7 +17,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let mut inputs = std::collections::HashMap::<String, F>::new();
     inputs.insert("val".into(), F::from(args.get(1).unwrap().parse::<i32>().unwrap()));
-    let wires = generate_witnesses(inputs);
+    let (wires, public) = generate_witnesses(inputs);
     let (witness, instance) = rcc_output_to_plaf_witness_and_instance(wires);
     let plaf_string = std::fs::read_to_string("examples/halo2_example_config.toml").expect("Cannot read plaf file");
     let plaf = deserialize(plaf_string);
