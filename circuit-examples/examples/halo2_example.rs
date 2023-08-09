@@ -35,7 +35,7 @@ where W: AlgWire, C: Composer<Wire = W>
 
 #[component_of(e)]
 pub fn my_circuit(e: &mut H2Composer) {
-    let val = e.input_wire("val".into());
+    let val = e.input_wire("val");
 
     let ab = gen(e, val);
 

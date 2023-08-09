@@ -114,13 +114,13 @@ impl Composer for H2Composer {
     }
 
     /// Allocate a new input wire under name `name`
-    fn input_wire(&mut self, name: String) -> Self::Wire {
+    fn input_wire(&mut self, name: &str) -> Self::Wire {
         let w = self.runtime_composer.input_wire(name);
         self.new_wire_from_runtime_wire(w)
     }
 
     /// Allocate a new vector of input wires under name `name`
-    fn input_wires(&mut self, name: String, num: usize) -> Vec<Self::Wire> {
+    fn input_wires(&mut self, name: &str, num: usize) -> Vec<Self::Wire> {
         let runtime_wires = self.runtime_composer.input_wires(name, num);
         runtime_wires.iter().map(|&w| self.new_wire_from_runtime_wire(w)).collect()
     }

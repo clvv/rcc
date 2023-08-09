@@ -176,18 +176,18 @@ impl Composer for RuntimeComposer {
     }
 
     /// Register a wire as an input wire
-    fn input_wire(&mut self, name: String) -> RuntimeWire {
-        assert!(!self.input_wires.contains_key(&name), "Cannot declare the same input wire twice.");
+    fn input_wire(&mut self, name: &str) -> RuntimeWire {
+        assert!(!self.input_wires.contains_key(name), "Cannot declare the same input wire twice.");
         let w = self.new_wire();
-        self.input_wires.insert(name, InputWireType::Singleton(w));
+        self.input_wires.insert(name.into(), InputWireType::Singleton(w));
         w
     }
 
     /// Register a wire as an input wire
-    fn input_wires(&mut self, name: String, n: usize) -> Vec<RuntimeWire> {
-        assert!(!self.input_wires.contains_key(&name), "Cannot declare the same input wire twice.");
+    fn input_wires(&mut self, name: &str, n: usize) -> Vec<RuntimeWire> {
+        assert!(!self.input_wires.contains_key(name), "Cannot declare the same input wire twice.");
         let ws = self.new_wires(n);
-        self.input_wires.insert(name, InputWireType::Vector(ws.clone()));
+        self.input_wires.insert(name.into(), InputWireType::Vector(ws.clone()));
         ws
     }
 

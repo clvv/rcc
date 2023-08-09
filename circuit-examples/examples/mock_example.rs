@@ -31,7 +31,7 @@ fn gen(e: &mut MockComposer, val: MockWire) -> Vec<(MockWire, MockWire)> where
 
 #[component_of(e)]
 pub fn my_circuit(e: &mut MockComposer) {
-    let val = e.input_wire("val".into());
+    let val = e.input_wire("val");
 
     let ab = gen(e, val);
 

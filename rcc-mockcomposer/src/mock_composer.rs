@@ -59,12 +59,12 @@ impl Composer for MockComposer {
         self.new_wire_from_runtime_wire(w)
     }
 
-    fn input_wire(&mut self, name: String) -> Self::Wire {
+    fn input_wire(&mut self, name: &str) -> Self::Wire {
         let w = self.runtime_composer.input_wire(name);
         self.new_wire_from_runtime_wire(w)
     }
 
-    fn input_wires(&mut self, name: String, n: usize) -> Vec<Self::Wire> {
+    fn input_wires(&mut self, name: &str, n: usize) -> Vec<Self::Wire> {
         let ws = self.runtime_composer.input_wires(name, n);
         ws.iter().map(|&w| {
             self.new_wire_from_runtime_wire(w)

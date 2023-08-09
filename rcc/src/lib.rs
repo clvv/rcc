@@ -25,8 +25,8 @@ pub trait Composer {
         (0..num).map(|_| self.new_wire()).collect()
     }
 
-    fn input_wire(&mut self, name: String) -> Self::Wire;
-    fn input_wires(&mut self, name: String, num: usize) -> Vec<Self::Wire> ;
+    fn input_wire(&mut self, name: &str) -> Self::Wire;
+    fn input_wires(&mut self, name: &str, num: usize) -> Vec<Self::Wire> ;
     fn declare_public(&mut self, w: Self::Wire);
 
     fn enter_context(&mut self, name: String) {
@@ -100,8 +100,8 @@ impl Composer for () {
         ()
     }
 
-    fn input_wire(&mut self, _: String) -> () {  }
-    fn input_wires(&mut self, _: String, _: usize) -> Vec<()> { Vec::new() }
+    fn input_wire(&mut self, _: &str) -> () {  }
+    fn input_wires(&mut self, _: &str, _: usize) -> Vec<()> { Vec::new() }
     fn declare_public(&mut self, _: ()) -> () { }
 }
 
