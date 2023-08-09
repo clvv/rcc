@@ -35,13 +35,9 @@ pub fn my_circuit(e: &mut MockComposer) {
 
     let ab = gen(e, val);
 
-    let mut c: Vec<MockWire> = vec![];
-    e.smart_map(ab.iter(), |e, &(ai, bi)| {
-        c.push(mul_seq(e, *ai, *bi))
+    let c = e.smart_map(ab.iter(), |e, &(ai, bi)| {
+        mul_seq(e, *ai, *bi)
     });
-    // let c: Vec<MockWire> = ab.iter().map(|(ai, bi)| {
-    //     mul_seq(e, *ai, *bi)
-    // }).collect();
 
     let sum = e.sum(c);
 
