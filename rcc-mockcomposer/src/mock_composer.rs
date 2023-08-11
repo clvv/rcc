@@ -3,8 +3,8 @@ use quote::{quote, ToTokens};
 use indexmap::IndexMap;
 use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean, AlgComposer}, impl_alg_op};
 
-pub use rcc::Composer;
-pub use rcc_macro::{component_of, circuit_main};
+pub use rcc::{Composer, global_composer};
+pub use rcc_macro::{component_of, component, circuit_main};
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
 pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
@@ -294,3 +294,5 @@ impl AlgComposer for MockComposer {
         Boolean(a)
     }
 }
+
+global_composer!(MockComposer, MockWire);

@@ -4,6 +4,7 @@ use proc_macro2::TokenStream;
 
 pub mod runtime_composer;
 pub mod traits;
+pub mod global_composer;
 
 pub trait Wire: Sized + Copy + Clone {
     type Composer: Composer<Wire = Self>;

@@ -2,7 +2,7 @@
 #![allow(unused_must_use)]
 
 use num_bigint::BigUint;
-use rcc::traits::AlgComposer;
+use rcc::{traits::AlgComposer, global_composer};
 use std::{ops::{Add, Sub, Mul, Neg}, path::PathBuf};
 use polyexen::expr::{Column, ColumnKind, ColumnQuery, Expr, PlonkVar};
 use polyexen::plaf::{
@@ -18,7 +18,7 @@ pub use ark_bn254::Fr as F;
 use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean}, impl_alg_op};
 
 pub use rcc::Composer;
-pub use rcc_macro::{component_of, circuit_main};
+pub use rcc_macro::{component_of, component, circuit_main};
 pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
 
 fn fc(index: usize) -> Column {
@@ -33,7 +33,7 @@ fn pc(index: usize) -> Column {
     Column { kind: ColumnKind::Public, index }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 /// We use a single vertical gate of the form
 ///    w(X) | s(X)
 ///    a    | 1
@@ -60,7 +60,7 @@ pub struct H2Composer {
     copys: Vec<CopyC>
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct H2Wire {
     id: usize,
     column: usize,
@@ -539,47 +539,4 @@ impl AlgComposer for H2Composer {
     }
 }
 
-// use std::sync::OnceLock;
-// use std::mem::ManuallyDrop;
-
-// static mut GLOBAL_COMPOSER: OnceLock<ManuallyDrop<usize>> = OnceLock::new();
-
-// pub fn composer() -> &'static mut H2Composer {
-//     unsafe {
-//         let p = ManuallyDrop::take(GLOBAL_COMPOSER.get_mut().unwrap());
-//         &mut *(p as *mut H2Composer)
-//     }
-// }
-
-// pub fn set_composer() {
-//     let mut c = H2Composer::new();
-//     let p = &mut c as *mut H2Composer as usize;
-//     unsafe {
-//         GLOBAL_COMPOSER.set(ManuallyDrop::new(p));
-//     }
-// }
-
-// pub fn new_wire() -> H2Wire {
-//     composer().new_wire()
-// }
-
-// pub fn new_wires(n: usize) -> Vec<H2Wire> {
-//     composer().new_wires(n)
-// }
-
-// pub fn input_wire(name: &str) -> H2Wire {
-//     composer().input_wire(name)
-// }
-
-// pub fn input_wires(name: &str, n: usize) -> Vec<H2Wire> {
-//     composer().input_wires(name, n)
-// }
-
-// pub fn declare_public(w: H2Wire, name: &str) {
-//     composer().declare_public(w, name)
-// }
-
-// pub fn smart_map<T, U>(iter: impl Iterator<Item = T>, f: impl FnMut(&mut H2Composer, &T) -> U) -> Vec<U> {
-//     composer().smart_map(iter, f)
-// }
-
+global_composer!(H2Composer, H2Wire);
