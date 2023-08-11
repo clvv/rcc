@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use clap::Parser;
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(about)]
@@ -12,4 +12,3 @@ pub struct CompilationArgs {
     #[arg(short, long)]
     pub config: Option<PathBuf>,
 }
-

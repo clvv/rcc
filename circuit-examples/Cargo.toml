@@ -12,9 +12,3 @@ ark-ff = "0.4.0"
 ark-bn254 = "0.4.0"
 rust-format = "0.3.4"
 
-[patch."https://github.com/privacy-scaling-explorations/halo2.git"]
-halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle" }
-
-[patch.crates-io]
-halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle" }
-

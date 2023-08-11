@@ -17,9 +17,7 @@ fn mul_seq(a: W, b: W) -> W {
 
 #[component]
 fn gen(val: W) -> Vec<(W, W)> {
-    smart_map(0..N as u32, |_, &i| {
-        (val + i, val - i)
-    })
+    smart_map(0..N as u32, |_, &i| (val + i, val - i))
 }
 
 #[main_component]
@@ -28,12 +26,9 @@ fn my_circuit() {
 
     let ab = gen(val);
 
-    let c = smart_map(ab.iter(), |_, &(ai, bi)| {
-        mul_seq(*ai, *bi)
-    });
+    let c = smart_map(ab.iter(), |_, &(ai, bi)| mul_seq(*ai, *bi));
 
     let sum = sum(c);
 
     sum.declare_public("sum");
 }
-

@@ -1,0 +1,17 @@
+[workspace]
+
+members = [
+    "cargo-rcc",
+    "circuit-examples",
+    "rcc",
+    "rcc-halo2",
+    "rcc-macro",
+    "rcc-mockbuilder",
+]
+
+[patch."https://github.com/privacy-scaling-explorations/halo2.git"]
+halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle"}
+
+[patch.crates-io]
+halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle"}
+

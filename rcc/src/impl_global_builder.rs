@@ -7,9 +7,7 @@ macro_rules! impl_global_builder {
 
         /// Returns a mutable reference to the global composer
         pub fn builder() -> &'static mut $builder {
-            unsafe {
-                GLOBAL_COMPOSER.get_mut().unwrap()
-            }
+            unsafe { GLOBAL_COMPOSER.get_mut().unwrap() }
         }
 
         /// This is called automatically in `circuit_main`
@@ -52,8 +50,11 @@ macro_rules! impl_global_builder {
 
         /// A map that generates optimized witness generation code. Using this over standard
         /// iterators helps with compilation time for the generated witness generator
-        pub fn smart_map<T, U>(iter: impl Iterator<Item = T>, f: impl FnMut(&mut $builder, &T) -> U) -> Vec<U> {
+        pub fn smart_map<T, U>(
+            iter: impl Iterator<Item = T>,
+            f: impl FnMut(&mut $builder, &T) -> U,
+        ) -> Vec<U> {
             builder().smart_map(iter, f)
         }
-    }
+    };
 }

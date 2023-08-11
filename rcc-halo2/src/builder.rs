@@ -1,36 +1,49 @@
 #![allow(unused_variables)]
 #![allow(unused_must_use)]
 
-pub use rcc::{Builder, Wire, traits::{AlgWire, Boolean}};
-pub use rcc_macro::{component_of, component, main_component};
-
-use num_bigint::BigUint;
-use rcc::{traits::AlgBuilder, impl_global_builder};
-use std::{ops::{Add, Sub, Mul, Neg}, path::PathBuf};
-use polyexen::expr::{Column, ColumnKind, ColumnQuery, Expr, PlonkVar};
-use polyexen::plaf::{
-    ColumnFixed, ColumnWitness, ColumnPublic, Columns, Info, Plaf, Poly, CopyC
+pub use rcc::{
+    traits::{AlgWire, Boolean},
+    Builder, Wire,
 };
+pub use rcc_macro::{component, component_of, main_component};
+
+use ark_bn254::Fr as F;
+use ark_ff::PrimeField;
+use indexmap::IndexMap;
+use num_bigint::BigUint;
+use polyexen::expr::{Column, ColumnKind, ColumnQuery, Expr, PlonkVar};
+use polyexen::plaf::{ColumnFixed, ColumnPublic, ColumnWitness, Columns, CopyC, Info, Plaf, Poly};
 use polyexen::plaf::{PlafDisplayBaseTOML, PlafDisplayFixedCSV};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use indexmap::IndexMap;
-use ark_ff::PrimeField;
-use ark_bn254::Fr as F;
-use rcc::{runtime_composer::RuntimeComposer, impl_alg_op};
+use rcc::{impl_alg_op, runtime_composer::RuntimeComposer};
+use rcc::{impl_global_builder, traits::AlgBuilder};
+use std::{
+    ops::{Add, Mul, Neg, Sub},
+    path::PathBuf,
+};
 
 type RuntimeWire = <RuntimeComposer as Builder>::Wire;
 
 fn fc(index: usize) -> Column {
-    Column { kind: ColumnKind::Fixed, index }
+    Column {
+        kind: ColumnKind::Fixed,
+        index,
+    }
 }
 
 fn wc(index: usize) -> Column {
-    Column { kind: ColumnKind::Witness, index }
+    Column {
+        kind: ColumnKind::Witness,
+        index,
+    }
 }
 
 fn pc(index: usize) -> Column {
-    Column { kind: ColumnKind::Public, index }
+    Column {
+        kind: ColumnKind::Public,
+        index,
+    }
 }
 
 #[derive(Default, Debug)]
@@ -57,7 +70,7 @@ pub struct H2Builder {
     /// Plaf columns
     columns: Columns,
     /// List of copy constraints
-    copys: Vec<CopyC>
+    copys: Vec<CopyC>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -66,7 +79,7 @@ pub struct H2Wire {
     column: usize,
     row: usize,
     runtime_wire: RuntimeWire,
-    builder_ptr: *mut H2Builder
+    builder_ptr: *mut H2Builder,
 }
 
 impl_alg_op!(H2Wire, F);
@@ -75,9 +88,7 @@ impl Wire for H2Wire {
     type Builder = H2Builder;
 
     fn builder(&self) -> &mut H2Builder {
-        unsafe {
-            &mut *self.builder_ptr as &mut H2Builder
-        }
+        unsafe { &mut *self.builder_ptr as &mut H2Builder }
     }
 }
 
@@ -122,7 +133,10 @@ impl Builder for H2Builder {
     /// Allocate a new vector of input wires under name `name`
     fn input_wires(&mut self, name: &str, num: usize) -> Vec<Self::Wire> {
         let runtime_wires = self.runtime_composer.input_wires(name, num);
-        runtime_wires.iter().map(|&w| self.new_wire_from_runtime_wire(w)).collect()
+        runtime_wires
+            .iter()
+            .map(|&w| self.new_wire_from_runtime_wire(w))
+            .collect()
     }
 
     /// Copy a witness wire to the public column
@@ -134,7 +148,7 @@ impl Builder for H2Builder {
             column: 1,
             row: self.public.len(),
             runtime_wire: self.runtime_composer.new_wire(),
-            builder_ptr: self as *mut H2Builder
+            builder_ptr: self as *mut H2Builder,
         };
         self.runtime_composer.runtime(quote!( #w = #a; ));
         self.copys[1].offsets.push((a.id, self.public.len()));
@@ -148,24 +162,27 @@ impl H2Builder {
         let mut c = Self::default();
         c.columns = Columns {
             witness: vec![ColumnWitness::new(String::from("witness"), 0)],
-            fixed: vec![ColumnFixed::new(String::from("selector")), ColumnFixed::new(String::from("constants"))],
+            fixed: vec![
+                ColumnFixed::new(String::from("selector")),
+                ColumnFixed::new(String::from("constants")),
+            ],
             public: vec![ColumnPublic::new(String::from("public"))],
         };
 
         c.copys = vec![
             CopyC {
                 columns: (wc(0), wc(0)),
-                offsets: vec![]
+                offsets: vec![],
             },
             // Copy constraints for public inputs
             CopyC {
                 columns: (wc(0), pc(0)),
-                offsets: vec![]
+                offsets: vec![],
             },
             // Copy constraints for constants
             CopyC {
                 columns: (wc(0), fc(1)),
-                offsets: vec![]
+                offsets: vec![],
             },
         ];
 
@@ -179,7 +196,7 @@ impl H2Builder {
             column: 0,
             row: self.witness.len(),
             runtime_wire: rt_wire,
-            builder_ptr: self as *mut H2Builder
+            builder_ptr: self as *mut H2Builder,
         };
         self.witness.push(w);
         self.wires.push(w);
@@ -235,7 +252,8 @@ impl H2Builder {
         };
         let w = self.new_wire();
         let us = format!("{}", v.into_bigint());
-        self.runtime_composer.runtime(quote!( #w = F::from(BigInt!(#us)); ));
+        self.runtime_composer
+            .runtime(quote!( #w = F::from(BigInt!(#us)); ));
         self.copys[2].offsets.push((w.id, constant_index));
         w
     }
@@ -260,28 +278,59 @@ impl H2Builder {
 
     pub fn gen_plaf(&self) -> Plaf {
         if self.selectors.len() != self.witness.len() {
-            panic!("selector.len() = {}, wires.len() = {}", self.selectors.len(), self.witness.len());
+            panic!(
+                "selector.len() = {}, wires.len() = {}",
+                self.selectors.len(),
+                self.witness.len()
+            );
         }
 
         let info = Info {
             // TODO: Remove hardcoded p
-            p: BigUint::parse_bytes(b"21888242871839275222246405745257275088548364400416034343698204186575808495617", 10).unwrap(),
+            p: BigUint::parse_bytes(
+                b"21888242871839275222246405745257275088548364400416034343698204186575808495617",
+                10,
+            )
+            .unwrap(),
             num_rows: self.selectors.len(),
             challenges: vec![],
         };
 
-        let fv = |index, rotation| Expr::Var(PlonkVar::Query(ColumnQuery { column: fc(index), rotation }));
-        let wv = |index, rotation| Expr::Var(PlonkVar::Query(ColumnQuery { column: wc(index), rotation }));
-        let pv = |index, rotation| Expr::Var(PlonkVar::Query(ColumnQuery { column: pc(index), rotation }));
+        let fv = |index, rotation| {
+            Expr::Var(PlonkVar::Query(ColumnQuery {
+                column: fc(index),
+                rotation,
+            }))
+        };
+        let wv = |index, rotation| {
+            Expr::Var(PlonkVar::Query(ColumnQuery {
+                column: wc(index),
+                rotation,
+            }))
+        };
+        let pv = |index, rotation| {
+            Expr::Var(PlonkVar::Query(ColumnQuery {
+                column: pc(index),
+                rotation,
+            }))
+        };
 
         let exp = (wv(0, 0) + wv(0, 1) * wv(0, 2) - wv(0, 3)) * fv(0, 0);
         let poly = Poly {
             name: "main".into(),
-            exp
+            exp,
         };
 
-        let selectors: Vec<_> = self.selectors.iter().map(|&u| Some(BigUint::from(u))).collect();
-        let mut constants: Vec<_> = self.constants.iter().map(|(c, _)| Some((*c).into())).collect();
+        let selectors: Vec<_> = self
+            .selectors
+            .iter()
+            .map(|&u| Some(BigUint::from(u)))
+            .collect();
+        let mut constants: Vec<_> = self
+            .constants
+            .iter()
+            .map(|(c, _)| Some((*c).into()))
+            .collect();
 
         let n = selectors.len() - constants.len();
         if n > 0 {
@@ -328,7 +377,8 @@ impl H2Builder {
             };
         };
 
-        self.runtime_composer.compose_rust_witness_gen(prelude, init)
+        self.runtime_composer
+            .compose_rust_witness_gen(prelude, init)
     }
 
     /// Write out circuit config to path
@@ -349,13 +399,17 @@ impl H2Builder {
         let name = path.file_stem().unwrap().to_str().unwrap();
         let args = crate::compile_helper::CompilationArgs::parse();
 
-        let plaf_path = if let Some(p) = args.config { p } else {
+        let plaf_path = if let Some(p) = args.config {
+            p
+        } else {
             let mut plaf_path = path.clone();
             plaf_path.set_file_name(format!("{name}_config.toml"));
             plaf_path
         };
 
-        let runtime_lib_path = if let Some(p) = args.runtime { p } else {
+        let runtime_lib_path = if let Some(p) = args.runtime {
+            p
+        } else {
             let mut runtime_lib_path = path.clone();
             runtime_lib_path.set_file_name(format!("{name}_runtime_lib.rs"));
             runtime_lib_path

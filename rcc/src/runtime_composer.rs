@@ -1,7 +1,7 @@
+use crate::{Builder, ContextMarker, Wire};
+use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
-use indexmap::IndexMap;
-use crate::{Builder, ContextMarker, Wire};
 
 #[derive(Debug, Copy, Clone)]
 /// A compile time representation of a circuit wire
@@ -10,16 +10,14 @@ pub struct RuntimeWire {
     pub global_id: usize,
     /// A hack to make the composer accessible when ToToken is run for the wire
     /// TODO: implement a custom quote macro and remove this
-    composer_ptr: *mut RuntimeComposer
+    composer_ptr: *mut RuntimeComposer,
 }
 
 impl Wire for RuntimeWire {
     type Builder = RuntimeComposer;
 
     fn builder(&self) -> &mut RuntimeComposer {
-        unsafe {
-            &mut *self.composer_ptr as &mut RuntimeComposer
-        }
+        unsafe { &mut *self.composer_ptr as &mut RuntimeComposer }
     }
 }
 
@@ -75,7 +73,9 @@ impl ComponentContext {
         self.input_wires.iter().enumerate().find_map(|(i, a)| {
             if a.global_id == w.global_id {
                 Some(i)
-            } else { None }
+            } else {
+                None
+            }
         })
     }
 
@@ -143,7 +143,7 @@ impl ComponentContext {
 #[derive(Clone, Debug)]
 pub enum InputWireType {
     Singleton(RuntimeWire),
-    Vector(Vec<RuntimeWire>)
+    Vector(Vec<RuntimeWire>),
 }
 
 /// The RuntimeComposer is a helper that helps the ciruict builder to mange
@@ -155,7 +155,7 @@ pub struct RuntimeComposer {
     compiled_contexts: IndexMap<String, ComponentContext>,
     pub wires: Vec<RuntimeWire>,
     input_wires: IndexMap<String, InputWireType>,
-    public_wires: IndexMap<String, RuntimeWire>
+    public_wires: IndexMap<String, RuntimeWire>,
 }
 
 impl Builder for RuntimeComposer {
@@ -170,7 +170,7 @@ impl Builder for RuntimeComposer {
         }
         let w = RuntimeWire {
             global_id: m,
-            composer_ptr: self as *mut RuntimeComposer
+            composer_ptr: self as *mut RuntimeComposer,
         };
         self.wires.push(w);
         w
@@ -178,17 +178,25 @@ impl Builder for RuntimeComposer {
 
     /// Register a wire as an input wire
     fn input_wire(&mut self, name: &str) -> RuntimeWire {
-        assert!(!self.input_wires.contains_key(name), "Cannot declare the same input wire twice.");
+        assert!(
+            !self.input_wires.contains_key(name),
+            "Cannot declare the same input wire twice."
+        );
         let w = self.new_wire();
-        self.input_wires.insert(name.into(), InputWireType::Singleton(w));
+        self.input_wires
+            .insert(name.into(), InputWireType::Singleton(w));
         w
     }
 
     /// Register a wire as an input wire
     fn input_wires(&mut self, name: &str, n: usize) -> Vec<RuntimeWire> {
-        assert!(!self.input_wires.contains_key(name), "Cannot declare the same input wire twice.");
+        assert!(
+            !self.input_wires.contains_key(name),
+            "Cannot declare the same input wire twice."
+        );
         let ws = self.new_wires(n);
-        self.input_wires.insert(name.into(), InputWireType::Vector(ws.clone()));
+        self.input_wires
+            .insert(name.into(), InputWireType::Vector(ws.clone()));
         ws
     }
 
@@ -203,23 +211,26 @@ impl Builder for RuntimeComposer {
 
         let self_ptr = self as *mut RuntimeComposer;
 
-        ContextMarker::new(Box::new(move || {
-            unsafe {
-                let e = &mut *self_ptr as &mut RuntimeComposer;
-                e.exit_context()
-            }
+        ContextMarker::new(Box::new(move || unsafe {
+            let e = &mut *self_ptr as &mut RuntimeComposer;
+            e.exit_context()
         }))
     }
 
     /// Generate runtime code into the current context
     fn runtime(&mut self, code: TokenStream) {
-        self.context_stack.last_mut().unwrap().code.extend(code.clone());
+        self.context_stack
+            .last_mut()
+            .unwrap()
+            .code
+            .extend(code.clone());
     }
 
     fn enter_context(&mut self, name: String) {
         let var_start = self.context_stack.last().unwrap().allocated;
         let global_start = self.context_stack.first().unwrap().allocated;
-        self.context_stack.push(ComponentContext::new(name, var_start, global_start));
+        self.context_stack
+            .push(ComponentContext::new(name, var_start, global_start));
     }
 
     /// Exits a context
@@ -238,7 +249,11 @@ impl Builder for RuntimeComposer {
 
         // Check to see if a compatible closure has been compiled before
         let closure_name = if self.compiled_contexts.contains_key(&key) {
-            self.compiled_contexts.get(&key).unwrap().closure_name.clone()
+            self.compiled_contexts
+                .get(&key)
+                .unwrap()
+                .closure_name
+                .clone()
         } else {
             let closure_name = format!("{}_{}", context.name, context.global_start);
             context.closure_name = closure_name.clone();
@@ -252,9 +267,10 @@ impl Builder for RuntimeComposer {
 
         let closure_ident = format_ident!("{}", closure_name);
         let prev_context = self.context_stack.last_mut().unwrap();
-        let input_wires_iter = context.input_wires.iter().map(|w| {
-            prev_context.format_and_mark_input(*w)
-        });
+        let input_wires_iter = context
+            .input_wires
+            .iter()
+            .map(|w| prev_context.format_and_mark_input(*w));
         let input_wires = quote!( &[#( #input_wires_iter ) ,*] );
         let wires_var = format_ident!("wires_{}", prev_context.name);
         let start = context.var_start;
@@ -265,7 +281,6 @@ impl Builder for RuntimeComposer {
             #closure_ident( &#wires_var[#start..#end], #input_wires );
         });
     }
-
 }
 
 impl RuntimeComposer {
@@ -278,29 +293,28 @@ impl RuntimeComposer {
     /// Returns a TokenStream encoding a closure that computes all the witnesses
     /// - `prelude` code sets up necessary imports and must set a type `WireVal`
     pub fn compose_rust_witness_gen(&mut self, prelude: TokenStream, init: TokenStream) -> String {
-        let defs = self.compiled_contexts.iter().map(|(_, c) | {
-            c.code.clone()
-        });
+        let defs = self.compiled_contexts.iter().map(|(_, c)| c.code.clone());
 
         let n = self.wires.len();
         let main = self.context_stack.pop().unwrap().code;
 
-        let set_input_wires = self.input_wires.iter().map(|(ref key, ref input)| {
-            match input {
+        let set_input_wires = self
+            .input_wires
+            .iter()
+            .map(|(ref key, ref input)| match input {
                 InputWireType::Singleton(w) => {
                     let id = w.global_id;
                     quote!( *wire(#id) = *inputs.get(#key).unwrap(); )
-                },
+                }
                 InputWireType::Vector(ws) => {
                     let mut ts = quote!( #( let vs = inputs.get(#key).unwrap(); ));
                     for (i, w) in ws.iter().enumerate() {
                         let id = w.global_id;
-                        ts.extend( quote!( *wire(#id) = *vs[#i]; ) );
+                        ts.extend(quote!( *wire(#id) = *vs[#i]; ));
                     }
                     ts
                 }
-            }
-        });
+            });
 
         let set_public_wires = self.public_wires.iter().map(|(key, wire)| {
             let id = wire.global_id;

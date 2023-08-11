@@ -1,7 +1,7 @@
 pub use crate::{Builder, Wire};
 use rcc_macro::component_of;
 
-use std::ops::{Add, Sub, Mul, Neg, BitAnd, BitOr, BitXor, Not};
+use std::ops::{Add, BitAnd, BitOr, BitXor, Mul, Neg, Not, Sub};
 
 /// Trait for arithemtic logic wires
 pub trait AlgWire:
@@ -113,7 +113,10 @@ macro_rules! impl_alg_op {
             }
         }
 
-        impl<T> Add<T> for $wire where T: Into<$constant_type> {
+        impl<T> Add<T> for $wire
+        where
+            T: Into<$constant_type>,
+        {
             type Output = Self;
 
             fn add(self, c: T) -> Self {
@@ -130,7 +133,10 @@ macro_rules! impl_alg_op {
             }
         }
 
-        impl<T> Sub<T> for $wire where T: Into<$constant_type> {
+        impl<T> Sub<T> for $wire
+        where
+            T: Into<$constant_type>,
+        {
             type Output = Self;
 
             fn sub(self, c: T) -> Self {
@@ -156,7 +162,10 @@ macro_rules! impl_alg_op {
             }
         }
 
-        impl<T> Mul<T> for $wire where T: Into<$constant_type> {
+        impl<T> Mul<T> for $wire
+        where
+            T: Into<$constant_type>,
+        {
             type Output = Self;
 
             fn mul(self, c: T) -> Self {
@@ -179,12 +188,14 @@ macro_rules! impl_alg_op {
 
         impl<T: Into<$constant_type> + Clone> PartialEq<T> for $wire {
             fn eq(&self, other: &T) -> bool {
-                self.builder().assert_eq_const(*self, (*other).clone().into());
+                self.builder()
+                    .assert_eq_const(*self, (*other).clone().into());
                 true
             }
 
             fn ne(&self, other: &T) -> bool {
-                self.builder().assert_ne_const(*self, (*other).clone().into());
+                self.builder()
+                    .assert_ne_const(*self, (*other).clone().into());
                 true
             }
         }
@@ -203,10 +214,12 @@ macro_rules! impl_alg_op {
 
 /// Trait for a wire holding a boolean value
 pub trait BoolWire:
-    BitAnd<Output = Self> +
-    BitOr<Output = Self> +
-    BitXor<Output = Self> +
-    Not<Output = Self> + Sized + Copy
+    BitAnd<Output = Self>
+    + BitOr<Output = Self>
+    + BitXor<Output = Self>
+    + Not<Output = Self>
+    + Sized
+    + Copy
 {
     type AlgWire;
 

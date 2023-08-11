@@ -1,7 +1,7 @@
 use polyexen::plaf::{ColumnWitness, Witness};
 
-pub use ark_ff::{BigInteger, BigInt, Field};
 pub use ark_bn254::Fr as F;
+pub use ark_ff::{BigInt, BigInteger, Field};
 pub use halo2_proofs::halo2curves::bn256::Fr;
 
 pub use std::collections::HashMap;
@@ -22,13 +22,11 @@ pub fn rcc_output_to_plaf_witness_and_instance(mut wires: AllWires) -> (Witness,
         Witness {
             num_rows: wires[0].len(),
             columns: vec![ColumnWitness::new(String::from("witness"), 0)],
-            witness: wires.iter().map(|c| {
-                c.iter().map(|f| {
-                    Some((*f).into())
-                }).collect()
-            }).collect()
+            witness: wires
+                .iter()
+                .map(|c| c.iter().map(|f| Some((*f).into())).collect())
+                .collect(),
         },
-        vec![instance]
+        vec![instance],
     )
 }
-

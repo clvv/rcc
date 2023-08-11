@@ -1,16 +1,20 @@
+use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use indexmap::IndexMap;
-use rcc::{runtime_composer::RuntimeComposer, impl_alg_op};
+use rcc::{impl_alg_op, runtime_composer::RuntimeComposer};
 
-pub use rcc::{Builder, Wire, traits::{AlgWire, Boolean, AlgBuilder}, impl_global_builder};
-pub use rcc_macro::{component_of, component, main_component};
+pub use rcc::{
+    impl_global_builder,
+    traits::{AlgBuilder, AlgWire, Boolean},
+    Builder, Wire,
+};
+pub use rcc_macro::{component, component_of, main_component};
 
-use ark_ff::PrimeField;
 use ark_bn254::Fr as F;
+use ark_ff::PrimeField;
 type RuntimeWire = <RuntimeComposer as Builder>::Wire;
 
-use std::ops::{Add, Sub, Mul, Neg};
+use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Default)]
 /// Mock circuit composer that implements basic add, mul, and inverse functionalities
@@ -22,16 +26,14 @@ pub struct MockBuilder {
 #[derive(Clone, Copy)]
 pub struct MockWire {
     runtime_wire: RuntimeWire,
-    builder_ptr: *mut MockBuilder
+    builder_ptr: *mut MockBuilder,
 }
 
 impl Wire for MockWire {
     type Builder = MockBuilder;
 
     fn builder(&self) -> &mut MockBuilder {
-        unsafe {
-            &mut *self.builder_ptr as &mut MockBuilder
-        }
+        unsafe { &mut *self.builder_ptr as &mut MockBuilder }
     }
 }
 
@@ -67,9 +69,9 @@ impl Builder for MockBuilder {
 
     fn input_wires(&mut self, name: &str, n: usize) -> Vec<Self::Wire> {
         let ws = self.runtime_composer.input_wires(name, n);
-        ws.iter().map(|&w| {
-            self.new_wire_from_runtime_wire(w)
-        }).collect()
+        ws.iter()
+            .map(|&w| self.new_wire_from_runtime_wire(w))
+            .collect()
     }
 
     fn declare_public(&mut self, w: Self::Wire, name: &str) {
@@ -87,7 +89,7 @@ impl MockBuilder {
     fn new_wire_from_runtime_wire(&mut self, w: RuntimeWire) -> MockWire {
         MockWire {
             runtime_wire: w,
-            builder_ptr: self as *mut MockBuilder
+            builder_ptr: self as *mut MockBuilder,
         }
     }
 
@@ -105,11 +107,9 @@ impl MockBuilder {
 
     /// Compose runtime code that read an commandline argument into a wire
     pub fn arg_read(&mut self, wire: MockWire, index: usize) {
-        self.runtime(
-            quote! {
-                #wire = F::from(args.get(#index).unwrap().parse::<i32>().unwrap());
-            }
-        )
+        self.runtime(quote! {
+            #wire = F::from(args.get(#index).unwrap().parse::<i32>().unwrap());
+        })
     }
 
     /// Compose runtime code that logs the value of a wire
@@ -131,9 +131,11 @@ impl MockBuilder {
 
         let n = self.runtime_composer.wires.len();
 
-        let (constant_values, constant_indices): (Vec<_>, Vec<_>) = self.constants.iter().map(|(v, w)| {
-            (v, w.runtime_wire.global_id)
-        }).unzip();
+        let (constant_values, constant_indices): (Vec<_>, Vec<_>) = self
+            .constants
+            .iter()
+            .map(|(v, w)| (v, w.runtime_wire.global_id))
+            .unzip();
 
         let constant_decl = quote! {
             #( (*wire(#constant_indices)) = F::from(BigInt!(#constant_values)) ; ) *
@@ -151,7 +153,8 @@ impl MockBuilder {
             #constant_decl;
         };
 
-        self.runtime_composer.compose_rust_witness_gen(prelude, init)
+        self.runtime_composer
+            .compose_rust_witness_gen(prelude, init)
     }
 
     pub fn compile_from_commandline(&mut self, source: &str) {

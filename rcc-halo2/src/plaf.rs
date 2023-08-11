@@ -46,4 +46,3 @@ pub fn serialize(plaf: Plaf) -> String {
 pub fn deserialize(s: String) -> Plaf {
     toml::from_str(&s).unwrap()
 }
-

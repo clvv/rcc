@@ -4,12 +4,10 @@
 use num_bigint::BigUint;
 use polyexen::expr::{Column, ColumnKind, ColumnQuery, Expr, PlonkVar};
 use polyexen::plaf::backends::halo2::PlafH2Circuit;
-use polyexen::plaf::{
-    ColumnFixed, ColumnWitness, Columns, Info, Plaf, Poly, CopyC, Witness
-};
+use polyexen::plaf::{ColumnFixed, ColumnWitness, Columns, CopyC, Info, Plaf, Poly, Witness};
 
-pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
+pub use ark_ff::{BigInt, BigInteger, Field, PrimeField};
 use halo2_proofs::{dev::MockProver, halo2curves::bn256::Fr};
 
 fn get_minimum_k(plaf: &Plaf) -> u32 {
@@ -28,29 +26,32 @@ fn convert_field_element(f: F) -> Fr {
     Fr::from_repr(repr.try_into().unwrap()).unwrap()
 }
 
-pub fn mock_prove(
-    plaf: Plaf,
-    witness: Witness,
-    instance: Vec<Vec<F>>
-) {
+pub fn mock_prove(plaf: Plaf, witness: Witness, instance: Vec<Vec<F>>) {
     println!("{:?}", plaf);
     println!("{:?}", witness);
-    println!("Public Instance: {:?}", instance.iter().map(|v| {
-        v.iter().map(|&f| {
-            let u: BigUint = f.into(); u
-        }).collect::<Vec<_>>()
-    }).collect::<Vec<_>>());
+    println!(
+        "Public Instance: {:?}",
+        instance
+            .iter()
+            .map(|v| {
+                v.iter()
+                    .map(|&f| {
+                        let u: BigUint = f.into();
+                        u
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    );
 
     let k = get_minimum_k(&plaf);
 
-    let circuit = PlafH2Circuit {
-        plaf,
-        wit: witness
-    };
+    let circuit = PlafH2Circuit { plaf, wit: witness };
 
-    let instance: Vec<Vec<Fr>> = instance.iter().map(|v| {
-        v.iter().map(|&f| convert_field_element(f)).collect()
-    }).collect();
+    let instance: Vec<Vec<Fr>> = instance
+        .iter()
+        .map(|v| v.iter().map(|&f| convert_field_element(f)).collect())
+        .collect();
 
     let mock_prover = MockProver::<Fr>::run(k, &circuit, instance).unwrap();
     mock_prover.assert_satisfied();
@@ -65,7 +66,6 @@ fn test_mock_prove() {
     }
 
     fn build_test_plaf() -> Plaf {
-
         let w = ColumnWitness::new(String::from("w"), 0);
         let s = ColumnFixed::new(String::from("s"));
         let columns = Columns {
@@ -76,50 +76,63 @@ fn test_mock_prove() {
 
         let info = Info {
             // TODO: Remove hardcoded p
-            p: BigUint::parse_bytes(b"21888242871839275222246405745257275088548364400416034343698204186575808495617", 10).unwrap(),
+            p: BigUint::parse_bytes(
+                b"21888242871839275222246405745257275088548364400416034343698204186575808495617",
+                10,
+            )
+            .unwrap(),
             num_rows: 4,
             challenges: vec![],
         };
 
-        let fixed = |index, rotation| Expr::Var(PlonkVar::Query(ColumnQuery {
-            column: Column {
-                        kind: ColumnKind::Fixed,
-                        index,
-                    },
-            rotation
-        }));
+        let fixed = |index, rotation| {
+            Expr::Var(PlonkVar::Query(ColumnQuery {
+                column: Column {
+                    kind: ColumnKind::Fixed,
+                    index,
+                },
+                rotation,
+            }))
+        };
 
-        let witness = |index, rotation| Expr::Var(PlonkVar::Query(ColumnQuery {
-            column: Column {
-                        kind: ColumnKind::Witness,
-                        index,
-                    },
-            rotation
-        }));
+        let witness = |index, rotation| {
+            Expr::Var(PlonkVar::Query(ColumnQuery {
+                column: Column {
+                    kind: ColumnKind::Witness,
+                    index,
+                },
+                rotation,
+            }))
+        };
 
-        let _public = |index, rotation| Expr::Var(PlonkVar::Query(ColumnQuery {
-            column: Column {
-                        kind: ColumnKind::Public,
-                        index,
-                    },
-            rotation
-        }));
+        let _public = |index, rotation| {
+            Expr::Var(PlonkVar::Query(ColumnQuery {
+                column: Column {
+                    kind: ColumnKind::Public,
+                    index,
+                },
+                rotation,
+            }))
+        };
 
         let exp = (witness(0, 0) + witness(0, 1) * witness(0, 2) - witness(0, 3)) * fixed(0, 0);
         let poly = Poly {
             name: "main".into(),
-            exp
+            exp,
         };
 
         let copy = CopyC {
-            columns: (Column {
-                        kind: ColumnKind::Witness,
-                        index: 0,
-                    }, Column {
-                        kind: ColumnKind::Witness,
-                        index: 0,
-                    }),
-            offsets: vec![(0, 2)]
+            columns: (
+                Column {
+                    kind: ColumnKind::Witness,
+                    index: 0,
+                },
+                Column {
+                    kind: ColumnKind::Witness,
+                    index: 0,
+                },
+            ),
+            offsets: vec![(0, 2)],
         };
 
         Plaf {
@@ -130,12 +143,7 @@ fn test_mock_prove() {
             lookups: vec![],
             shuffles: vec![],
             copys: vec![copy],
-            fixed: vec![vec![
-                u(1),
-                u(0),
-                u(0),
-                u(0),
-            ]],
+            fixed: vec![vec![u(1), u(0), u(0), u(0)]],
         }
     }
 
@@ -145,14 +153,13 @@ fn test_mock_prove() {
 
     println!("{}", PlafDisplayBaseTOML(&plaf));
 
-    mock_prove(plaf, Witness {
-        num_rows: 4,
-        columns: vec![],
-        witness: vec![vec![
-            u(1),
-            u(0),
-            u(1),
-            u(1),
-        ]]
-    }, vec![]);
+    mock_prove(
+        plaf,
+        Witness {
+            num_rows: 4,
+            columns: vec![],
+            witness: vec![vec![u(1), u(0), u(1), u(1)]],
+        },
+        vec![],
+    );
 }

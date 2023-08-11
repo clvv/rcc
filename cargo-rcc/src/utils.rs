@@ -1,9 +1,9 @@
-use std::{path::PathBuf, process::Command};
-use std::process::Stdio;
-use std::fs::{write, read_to_string};
-use std::io::Read;
 use std::error::Error;
-use toml_edit::{Value, ArrayOfTables, InlineTable, Document};
+use std::fs::{read_to_string, write};
+use std::io::Read;
+use std::process::Stdio;
+use std::{path::PathBuf, process::Command};
+use toml_edit::{ArrayOfTables, Document, InlineTable, Value};
 
 pub const RCC_CIRCUIT_NAME_PREFIX: &str = "rcc-";
 
@@ -21,11 +21,15 @@ fn ensure_path_is_rcc_circuit(path: &PathBuf) -> Result<(), Box<dyn Error>> {
 fn get_manifest_path() -> PathBuf {
     use serde_json::{Value, Value::Object};
 
-    let output = Command::new("cargo").args(["locate-project"]).output().expect("Couldn't run cargo.");
-    let result: Value = serde_json::from_str(String::from_utf8(output.stdout).unwrap().as_str()).unwrap();
+    let output = Command::new("cargo")
+        .args(["locate-project"])
+        .output()
+        .expect("Couldn't run cargo.");
+    let result: Value =
+        serde_json::from_str(String::from_utf8(output.stdout).unwrap().as_str()).unwrap();
     let path_string: String = match result {
         Object(map) => map.get("root").unwrap().as_str().unwrap().into(),
-        _ => todo!()
+        _ => todo!(),
     };
     path_string.into()
 }
@@ -68,9 +72,7 @@ fn modify_manifest(op: impl FnOnce(&mut ArrayOfTables) -> ()) -> Result<(), Box<
 }
 
 /// This ensures that there is a binary target for a given circuit
-fn ensure_circuit_in_manifest(
-    circuit: &PathBuf,
-) -> Result<(), Box<dyn Error>> {
+fn ensure_circuit_in_manifest(circuit: &PathBuf) -> Result<(), Box<dyn Error>> {
     let circuit_name = circuit_path_to_name(circuit);
     let circuit_path = circuit.to_str().unwrap();
 
@@ -100,9 +102,7 @@ pub fn clean_manifest_for(circuit: &PathBuf) -> Result<(), Box<dyn Error>> {
     let circuit_name = circuit_path_to_name(circuit);
 
     modify_manifest(move |array| {
-        array.retain(|table| {
-            table.get("name").unwrap().as_str().unwrap() != circuit_name
-        });
+        array.retain(|table| table.get("name").unwrap().as_str().unwrap() != circuit_name);
     })?;
 
     Ok(())
@@ -112,7 +112,13 @@ pub fn clean_manifest_for(circuit: &PathBuf) -> Result<(), Box<dyn Error>> {
 pub fn clean_manifest_forall() -> Result<(), Box<dyn Error>> {
     modify_manifest(|array| {
         array.retain(|table| {
-            !table.get("name").unwrap().as_str().unwrap().to_string().starts_with(RCC_CIRCUIT_NAME_PREFIX)
+            !table
+                .get("name")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string()
+                .starts_with(RCC_CIRCUIT_NAME_PREFIX)
         });
     })?;
 
@@ -121,9 +127,7 @@ pub fn clean_manifest_forall() -> Result<(), Box<dyn Error>> {
 
 fn run_cargo(args: &[&str]) -> Result<(), std::io::Error> {
     let mut cmd = Command::new("cargo");
-    cmd.args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+    cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
 
     let mut child = cmd.spawn()?;
 
@@ -172,8 +176,13 @@ pub fn build_circuit(circuit: &PathBuf, args: Vec<&str>) -> Result<(), Box<dyn E
     println!("Building {circuit_name} via cargo..");
 
     let mut run = vec![
-        "run", "--color", "always", "--release",
-        "--bin", circuit_name.as_str(), "--"
+        "run",
+        "--color",
+        "always",
+        "--release",
+        "--bin",
+        circuit_name.as_str(),
+        "--",
     ];
 
     run.extend(args);
