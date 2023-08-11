@@ -22,8 +22,8 @@ halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2.gi
 # halo2_curves = { git = "https://github.com/privacy-scaling-explorations/halo2curves", tag = "0.3.3", package = "halo2curves" }
 snark-verifier = { git = "https://github.com/privacy-scaling-explorations/snark-verifier" }
 toml = "0.7.6"
-rust-format = "0.3.4"
 ff = "0.13.0"
+clap = { version = "4.3.19", features = ["derive"] }
 
 [patch."https://github.com/privacy-scaling-explorations/halo2.git"]
 # TODO change back to this once the PR is merged

@@ -18,7 +18,7 @@ pub use ark_bn254::Fr as F;
 use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean}, impl_alg_op};
 
 pub use rcc::Composer;
-pub use rcc_macro::component_of;
+pub use rcc_macro::{component_of, circuit_main};
 pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
 
 fn fc(index: usize) -> Column {
@@ -300,8 +300,8 @@ impl H2Composer {
         }
     }
 
-    /// Returns a TokenStream encoding a closure that computes all the witnesses
-    pub fn compose_rust_witness_gen(&mut self) -> TokenStream {
+    /// Returns a String encoding a closure that computes all the witnesses
+    pub fn compose_rust_witness_gen(&mut self) -> String {
         let wirerefs: Vec<TokenStream> = self.wires.iter().map(|w| w.to_ref()).collect();
         let num_rows_each_column = vec![self.witness.len(), self.public.len()];
 
@@ -332,23 +332,36 @@ impl H2Composer {
     }
 
     /// Write out circuit config to path
-    pub fn write_config(&mut self, path: PathBuf) {
-        use rust_format::{Formatter, RustFmt};
+    pub fn write_config(&mut self, plaf_path: PathBuf, runtime_lib_path: PathBuf) {
         use crate::plaf::serialize;
 
-        let name = path.file_stem().unwrap().to_str().unwrap();
-
         let plaf = serialize(self.gen_plaf());
-        let mut plaf_path = path.clone();
-        plaf_path.set_file_name(format!("{name}_config.toml"));
         std::fs::write(plaf_path, plaf).expect("Unable to write file");
 
-        let witness_gen_code = self.compose_rust_witness_gen();
-        let lib = format!("{}", witness_gen_code);
-        let formatted = RustFmt::default().format_str(lib).unwrap();
-        let mut runtime_lib_path = path.clone();
-        runtime_lib_path.set_file_name(format!("{name}_runtime_lib.rs"));
-        std::fs::write(runtime_lib_path, formatted).expect("Unable to write file");
+        let code = self.compose_rust_witness_gen();
+        std::fs::write(runtime_lib_path, code).expect("Unable to write file");
+    }
+
+    pub fn compile_from_commandline(&mut self, source: &str) {
+        use clap::Parser;
+
+        let path = std::path::PathBuf::from(source);
+        let name = path.file_stem().unwrap().to_str().unwrap();
+        let args = crate::compile_helper::CompilationArgs::parse();
+
+        let plaf_path = if let Some(p) = args.config { p } else {
+            let mut plaf_path = path.clone();
+            plaf_path.set_file_name(format!("{name}_config.toml"));
+            plaf_path
+        };
+
+        let runtime_lib_path = if let Some(p) = args.runtime { p } else {
+            let mut runtime_lib_path = path.clone();
+            runtime_lib_path.set_file_name(format!("{name}_runtime_lib.rs"));
+            runtime_lib_path
+        };
+
+        self.write_config(plaf_path, runtime_lib_path);
     }
 }
 
@@ -525,3 +538,48 @@ impl AlgComposer for H2Composer {
         Boolean(a)
     }
 }
+
+// use std::sync::OnceLock;
+// use std::mem::ManuallyDrop;
+
+// static mut GLOBAL_COMPOSER: OnceLock<ManuallyDrop<usize>> = OnceLock::new();
+
+// pub fn composer() -> &'static mut H2Composer {
+//     unsafe {
+//         let p = ManuallyDrop::take(GLOBAL_COMPOSER.get_mut().unwrap());
+//         &mut *(p as *mut H2Composer)
+//     }
+// }
+
+// pub fn set_composer() {
+//     let mut c = H2Composer::new();
+//     let p = &mut c as *mut H2Composer as usize;
+//     unsafe {
+//         GLOBAL_COMPOSER.set(ManuallyDrop::new(p));
+//     }
+// }
+
+// pub fn new_wire() -> H2Wire {
+//     composer().new_wire()
+// }
+
+// pub fn new_wires(n: usize) -> Vec<H2Wire> {
+//     composer().new_wires(n)
+// }
+
+// pub fn input_wire(name: &str) -> H2Wire {
+//     composer().input_wire(name)
+// }
+
+// pub fn input_wires(name: &str, n: usize) -> Vec<H2Wire> {
+//     composer().input_wires(name, n)
+// }
+
+// pub fn declare_public(w: H2Wire, name: &str) {
+//     composer().declare_public(w, name)
+// }
+
+// pub fn smart_map<T, U>(iter: impl Iterator<Item = T>, f: impl FnMut(&mut H2Composer, &T) -> U) -> Vec<U> {
+//     composer().smart_map(iter, f)
+// }
+

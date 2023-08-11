@@ -8,3 +8,5 @@ quote = "1.0"
 proc-macro2 = "1.0"
 indexmap = "1.9.2"
 rcc-macro = { path = "../rcc-macro" }
+prettyplease = "0.2"
+syn = { version = "2", default-features = false, features = ["full", "parsing"] }

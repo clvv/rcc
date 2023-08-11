@@ -277,7 +277,7 @@ impl RuntimeComposer {
 
     /// Returns a TokenStream encoding a closure that computes all the witnesses
     /// - `prelude` code sets up necessary imports and must set a type `WireVal`
-    pub fn compose_rust_witness_gen(&mut self, prelude: TokenStream, init: TokenStream) -> TokenStream {
+    pub fn compose_rust_witness_gen(&mut self, prelude: TokenStream, init: TokenStream) -> String {
         let defs = self.compiled_contexts.iter().map(|(_, c) | {
             c.code.clone()
         });
@@ -307,7 +307,7 @@ impl RuntimeComposer {
             quote!( public.insert(#key.into(), *wire(#id)); )
         });
 
-        quote! {
+        let code = quote! {
             #prelude
 
             use std::collections::HashMap;
@@ -315,7 +315,6 @@ impl RuntimeComposer {
             type Public = HashMap<String, F>;
 
             pub fn generate_witnesses(inputs: Input) -> (AllWires, Public) {
-
                 #init
 
                 #( #set_input_wires )* ;
@@ -331,6 +330,9 @@ impl RuntimeComposer {
 
                 (wires, public)
             }
-        }
+        };
+        let parsed: syn::File = syn::parse2(code).unwrap();
+        let formatted = prettyplease::unparse(&parsed);
+        formatted
     }
 }

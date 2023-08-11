@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean, AlgComposer}, impl_alg_op};
 
 pub use rcc::Composer;
-pub use rcc_macro::component_of;
+pub use rcc_macro::{component_of, circuit_main};
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
 pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
@@ -118,9 +118,8 @@ impl MockComposer {
         });
     }
 
-    /// Returns a TokenStream encoding a closure that computes all the witnesses
-    pub fn compose_rust_witness_gen(&mut self) -> TokenStream {
-
+    /// Returns a String encoding a closure that computes all the witnesses
+    pub fn compose_rust_witness_gen(&mut self) -> String {
         let prelude = quote! {
                 use ark_ff::{BigInt, Field, PrimeField};
                 use ark_bn254::Fr as F;
@@ -152,6 +151,17 @@ impl MockComposer {
         };
 
         self.runtime_composer.compose_rust_witness_gen(prelude, init)
+    }
+
+    pub fn compile_from_commandline(&mut self, source: &str) {
+        let path = std::path::PathBuf::from(source);
+        let name = path.file_stem().unwrap().to_str().unwrap();
+        let mut runtime_lib_path = path.clone();
+        runtime_lib_path.set_file_name(format!("{name}_runtime_lib.rs"));
+
+        // Compose the rust witness gen code
+        let code = self.compose_rust_witness_gen();
+        std::fs::write(runtime_lib_path, code).expect("Unable to write file");
     }
 }
 
