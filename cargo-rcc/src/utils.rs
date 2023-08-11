@@ -164,17 +164,25 @@ fn run_cargo(args: &[&str]) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-pub fn build_circuit(circuit: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub fn build_circuit(circuit: &PathBuf, args: Vec<&str>) -> Result<(), Box<dyn Error>> {
     ensure_path_is_rcc_circuit(circuit)?;
     ensure_circuit_in_manifest(circuit)?;
 
     let circuit_name = circuit_path_to_name(circuit);
     println!("Building {circuit_name} via cargo..");
 
-    run_cargo(&[
+    let mut run = vec![
         "run", "--color", "always", "--release",
-        "--bin", circuit_name.as_str()
-    ])?;
+        "--bin", circuit_name.as_str(), "--"
+    ];
+
+    run.extend(args);
+
+    let result = run_cargo(&run);
+
+    clean_manifest_for(circuit)?;
+
+    result?;
 
     Ok(())
 }
