@@ -4,22 +4,22 @@ use proc_macro2::TokenStream;
 
 pub mod runtime_composer;
 pub mod traits;
-pub mod global_composer;
+pub mod impl_global_builder;
 
 pub trait Wire: Sized + Copy + Clone {
-    type Composer: Composer<Wire = Self>;
-    fn composer(&self) -> &mut <Self as Wire>::Composer;
+    type Builder: Builder<Wire = Self>;
+    fn builder(&self) -> &mut <Self as Wire>::Builder;
     fn declare_public(self, name: &str) {
-        self.composer().declare_public(self, name);
+        self.builder().declare_public(self, name);
     }
 }
 
-/// Composer trait
-pub trait Composer {
+/// Circuit builder trait
+pub trait Builder {
     type Wire: Sized + Copy + Clone;
-    type BaseComposer: Composer;
+    type BaseBuilder: Builder;
 
-    fn base_composer(&mut self) -> Option<&mut Self::BaseComposer> {
+    fn base_builder(&mut self) -> Option<&mut Self::BaseBuilder> {
         None
     }
 
@@ -34,19 +34,19 @@ pub trait Composer {
     fn declare_public(&mut self, w: Self::Wire, name: &str);
 
     fn enter_context(&mut self, name: String) {
-        if let Some(e) = self.base_composer() {
+        if let Some(e) = self.base_builder() {
             e.enter_context(name)
         }
     }
 
     fn exit_context(&mut self) {
-        if let Some(e) = self.base_composer() {
+        if let Some(e) = self.base_builder() {
             e.exit_context()
         }
     }
 
     fn new_context(&mut self, name: String) -> ContextMarker {
-        if let Some(e) = self.base_composer() {
+        if let Some(e) = self.base_builder() {
             e.new_context(name)
         } else {
             ContextMarker { func: Box::new(|| {}) }
@@ -54,7 +54,7 @@ pub trait Composer {
     }
 
     fn runtime(&mut self, code: TokenStream) {
-        if let Some(e) = self.base_composer() {
+        if let Some(e) = self.base_builder() {
             e.runtime(code)
         }
     }
@@ -98,9 +98,9 @@ pub trait Composer {
     }
 }
 
-impl Composer for () {
+impl Builder for () {
     type Wire = ();
-    type BaseComposer = ();
+    type BaseBuilder = ();
 
     fn new_wire(&mut self) -> () {
         ()

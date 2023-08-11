@@ -2,7 +2,7 @@
 #![allow(unused_must_use)]
 
 use num_bigint::BigUint;
-use rcc::{traits::AlgComposer, global_composer};
+use rcc::{traits::AlgBuilder, impl_global_builder};
 use std::{ops::{Add, Sub, Mul, Neg}, path::PathBuf};
 use polyexen::expr::{Column, ColumnKind, ColumnQuery, Expr, PlonkVar};
 use polyexen::plaf::{
@@ -17,9 +17,9 @@ pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
 use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean}, impl_alg_op};
 
-pub use rcc::Composer;
+pub use rcc::Builder;
 pub use rcc_macro::{component_of, component, circuit_main};
-pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
+pub type RuntimeWire = <RuntimeComposer as Builder>::Wire;
 
 fn fc(index: usize) -> Column {
     Column { kind: ColumnKind::Fixed, index }
@@ -42,7 +42,7 @@ fn pc(index: usize) -> Column {
 ///    d    | 0
 /// satisfying s(X) * (w(X) + w(X*\omega) * w(X*\omega^2) = w(X*\omega^3)) == 0
 /// i.e. a + b * c = d when the selector column is turned on
-pub struct H2Composer {
+pub struct H2Builder {
     runtime_composer: RuntimeComposer,
     /// Maps field element to their position in the constant column
     constants: IndexMap<F, usize>,
@@ -66,17 +66,17 @@ pub struct H2Wire {
     column: usize,
     row: usize,
     runtime_wire: RuntimeWire,
-    composer_ptr: *mut H2Composer
+    builder_ptr: *mut H2Builder
 }
 
 impl_alg_op!(H2Wire, F);
 
 impl Wire for H2Wire {
-    type Composer = H2Composer;
+    type Builder = H2Builder;
 
-    fn composer(&self) -> &mut H2Composer {
+    fn builder(&self) -> &mut H2Builder {
         unsafe {
-            &mut *self.composer_ptr as &mut H2Composer
+            &mut *self.builder_ptr as &mut H2Builder
         }
     }
 }
@@ -99,11 +99,11 @@ impl H2Wire {
 }
 
 /// This implements numerous default functions
-impl Composer for H2Composer {
+impl Builder for H2Builder {
     type Wire = H2Wire;
-    type BaseComposer = RuntimeComposer;
+    type BaseBuilder = RuntimeComposer;
 
-    fn base_composer(&mut self) -> Option<&mut RuntimeComposer> {
+    fn base_builder(&mut self) -> Option<&mut RuntimeComposer> {
         Some(&mut self.runtime_composer)
     }
 
@@ -134,7 +134,7 @@ impl Composer for H2Composer {
             column: 1,
             row: self.public.len(),
             runtime_wire: self.runtime_composer.new_wire(),
-            composer_ptr: self as *mut H2Composer
+            builder_ptr: self as *mut H2Builder
         };
         self.runtime_composer.runtime(quote!( #w = #a; ));
         self.copys[1].offsets.push((a.id, self.public.len()));
@@ -143,7 +143,7 @@ impl Composer for H2Composer {
     }
 }
 
-impl H2Composer {
+impl H2Builder {
     pub fn new() -> Self {
         let mut c = Self::default();
         c.columns = Columns {
@@ -179,7 +179,7 @@ impl H2Composer {
             column: 0,
             row: self.witness.len(),
             runtime_wire: rt_wire,
-            composer_ptr: self as *mut H2Composer
+            builder_ptr: self as *mut H2Builder
         };
         self.witness.push(w);
         self.wires.push(w);
@@ -365,7 +365,7 @@ impl H2Composer {
     }
 }
 
-impl AlgComposer for H2Composer {
+impl AlgBuilder for H2Builder {
     type Constant = F;
     type Bool = Boolean<Self::Wire>;
 
@@ -539,4 +539,4 @@ impl AlgComposer for H2Composer {
     }
 }
 
-global_composer!(H2Composer, H2Wire);
+impl_global_builder!(H2Builder, H2Wire);

@@ -1,5 +1,5 @@
-use rcc_halo2::composer::{H2Wire as W, component, circuit_main, *};
-use rcc::{Composer, Wire};
+use rcc_halo2::builder::{H2Wire as W, component, circuit_main, *};
+use rcc::{Builder, Wire};
 
 const N: usize = 10;
 const M: usize = 10;

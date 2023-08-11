@@ -1,5 +1,5 @@
-use rcc_mockcomposer::mock_composer::{MockWire as W, component, circuit_main, *};
-use rcc::{Wire, Composer};
+use rcc_mockbuilder::mock_builder::{MockWire as W, component, circuit_main, *};
+use rcc::{Wire, Builder};
 
 const N: usize = 1000;
 const M: usize = 1000;

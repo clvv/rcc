@@ -1,4 +1,4 @@
-pub use crate::{Composer, Wire};
+pub use crate::{Builder, Wire};
 use rcc_macro::component_of;
 
 use std::ops::{Add, Sub, Mul, Neg, BitAnd, BitOr, BitXor, Not};
@@ -51,7 +51,7 @@ pub trait AlgWire:
     fn inv_or_any(self);
 }
 
-pub trait AlgComposer: Composer {
+pub trait AlgBuilder: Builder {
     type Constant: From<i32> + From<i64> + From<u32> + From<u64>;
     type Bool: BoolWire;
 
@@ -102,14 +102,14 @@ pub trait AlgComposer: Composer {
 }
 
 #[macro_export]
-/// Automatically implements AlgWire trait for AlgComposer::Wire
+/// Automatically implements AlgWire trait for AlgBuilder::Wire
 macro_rules! impl_alg_op {
     ($wire:ident, $constant_type:ty) => {
         impl Add for $wire {
             type Output = Self;
 
             fn add(self, other: Self) -> Self {
-                self.composer().add(self, other)
+                self.builder().add(self, other)
             }
         }
 
@@ -117,7 +117,7 @@ macro_rules! impl_alg_op {
             type Output = Self;
 
             fn add(self, c: T) -> Self {
-                let e = self.composer();
+                let e = self.builder();
                 e.add_const(self, c.into())
             }
         }
@@ -126,7 +126,7 @@ macro_rules! impl_alg_op {
             type Output = Self;
 
             fn sub(self, other: Self) -> Self {
-                self.composer().sub(self, other)
+                self.builder().sub(self, other)
             }
         }
 
@@ -134,7 +134,7 @@ macro_rules! impl_alg_op {
             type Output = Self;
 
             fn sub(self, c: T) -> Self {
-                let e = self.composer();
+                let e = self.builder();
                 e.sub_const(self, c.into())
             }
         }
@@ -143,7 +143,7 @@ macro_rules! impl_alg_op {
             type Output = Self;
 
             fn neg(self) -> Self {
-                let zero = self.composer().new_constant_wire(0.into());
+                let zero = self.builder().new_constant_wire(0.into());
                 zero - self
             }
         }
@@ -152,7 +152,7 @@ macro_rules! impl_alg_op {
             type Output = Self;
 
             fn mul(self, other: Self) -> Self {
-                self.composer().mul(self, other)
+                self.builder().mul(self, other)
             }
         }
 
@@ -160,42 +160,42 @@ macro_rules! impl_alg_op {
             type Output = Self;
 
             fn mul(self, c: T) -> Self {
-                let e = self.composer();
+                let e = self.builder();
                 e.mul_const(self, c.into())
             }
         }
 
         impl PartialEq for $wire {
             fn eq(&self, other: &Self) -> bool {
-                self.composer().assert_eq(*self, *other);
+                self.builder().assert_eq(*self, *other);
                 true
             }
 
             fn ne(&self, other: &Self) -> bool {
-                self.composer().assert_ne(*self, *other);
+                self.builder().assert_ne(*self, *other);
                 true
             }
         }
 
         impl<T: Into<$constant_type> + Clone> PartialEq<T> for $wire {
             fn eq(&self, other: &T) -> bool {
-                self.composer().assert_eq_const(*self, (*other).clone().into());
+                self.builder().assert_eq_const(*self, (*other).clone().into());
                 true
             }
 
             fn ne(&self, other: &T) -> bool {
-                self.composer().assert_ne_const(*self, (*other).clone().into());
+                self.builder().assert_ne_const(*self, (*other).clone().into());
                 true
             }
         }
 
         impl AlgWire for $wire {
             fn inv_or_panic(self) {
-                self.composer().inv_or_panic(self);
+                self.builder().inv_or_panic(self);
             }
 
             fn inv_or_any(self) {
-                self.composer().inv_or_any(self);
+                self.builder().inv_or_any(self);
             }
         }
     };

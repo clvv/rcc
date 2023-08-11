@@ -1,19 +1,19 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use indexmap::IndexMap;
-use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean, AlgComposer}, impl_alg_op};
+use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean, AlgBuilder}, impl_alg_op};
 
-pub use rcc::{Composer, global_composer};
+pub use rcc::{Builder, impl_global_builder};
 pub use rcc_macro::{component_of, component, circuit_main};
 pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
 pub use ark_bn254::Fr as F;
-pub type RuntimeWire = <RuntimeComposer as Composer>::Wire;
+pub type RuntimeWire = <RuntimeComposer as Builder>::Wire;
 
 use std::ops::{Add, Sub, Mul, Neg};
 
 #[derive(Default)]
 /// Mock circuit composer that implements basic add, mul, and inverse functionalities
-pub struct MockComposer {
+pub struct MockBuilder {
     runtime_composer: RuntimeComposer,
     constants: IndexMap<String, MockWire>,
 }
@@ -21,15 +21,15 @@ pub struct MockComposer {
 #[derive(Clone, Copy)]
 pub struct MockWire {
     runtime_wire: RuntimeWire,
-    composer_ptr: *mut MockComposer
+    builder_ptr: *mut MockBuilder
 }
 
 impl Wire for MockWire {
-    type Composer = MockComposer;
+    type Builder = MockBuilder;
 
-    fn composer(&self) -> &mut MockComposer {
+    fn builder(&self) -> &mut MockBuilder {
         unsafe {
-            &mut *self.composer_ptr as &mut MockComposer
+            &mut *self.builder_ptr as &mut MockBuilder
         }
     }
 }
@@ -44,11 +44,11 @@ impl ToTokens for MockWire {
 impl_alg_op!(MockWire, F);
 
 /// This implements numerous default functions
-impl Composer for MockComposer {
+impl Builder for MockBuilder {
     type Wire = MockWire;
-    type BaseComposer = RuntimeComposer;
+    type BaseBuilder = RuntimeComposer;
 
-    fn base_composer(&mut self) -> Option<&mut RuntimeComposer> {
+    fn base_builder(&mut self) -> Option<&mut RuntimeComposer> {
         Some(&mut self.runtime_composer)
     }
 
@@ -76,7 +76,7 @@ impl Composer for MockComposer {
     }
 }
 
-impl MockComposer {
+impl MockBuilder {
     pub fn new() -> Self {
         let mut s = Self::default();
         s.runtime_composer = RuntimeComposer::new();
@@ -86,7 +86,7 @@ impl MockComposer {
     fn new_wire_from_runtime_wire(&mut self, w: RuntimeWire) -> MockWire {
         MockWire {
             runtime_wire: w,
-            composer_ptr: self as *mut MockComposer
+            builder_ptr: self as *mut MockBuilder
         }
     }
 
@@ -165,7 +165,7 @@ impl MockComposer {
     }
 }
 
-impl AlgComposer for MockComposer {
+impl AlgBuilder for MockBuilder {
     type Constant = F;
     type Bool = Boolean<Self::Wire>;
 
@@ -295,4 +295,4 @@ impl AlgComposer for MockComposer {
     }
 }
 
-global_composer!(MockComposer, MockWire);
+impl_global_builder!(MockBuilder, MockWire);

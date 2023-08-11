@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use indexmap::IndexMap;
-use crate::{Composer, ContextMarker, Wire};
+use crate::{Builder, ContextMarker, Wire};
 
 #[derive(Debug, Copy, Clone)]
 /// A compile time representation of a circuit wire
@@ -14,9 +14,9 @@ pub struct RuntimeWire {
 }
 
 impl Wire for RuntimeWire {
-    type Composer = RuntimeComposer;
+    type Builder = RuntimeComposer;
 
-    fn composer(&self) -> &mut RuntimeComposer {
+    fn builder(&self) -> &mut RuntimeComposer {
         unsafe {
             &mut *self.composer_ptr as &mut RuntimeComposer
         }
@@ -26,7 +26,7 @@ impl Wire for RuntimeWire {
 impl RuntimeWire {
     /// Print out runtime code that access the allocated wire
     pub fn format_against_latest_context(&self) -> TokenStream {
-        let e = self.composer();
+        let e = self.builder();
         let last_context = e.context_stack.last_mut().unwrap();
         let id = last_context.format_and_mark_input(*self);
         quote! { (*wire(#id)) }
@@ -158,9 +158,9 @@ pub struct RuntimeComposer {
     public_wires: IndexMap<String, RuntimeWire>
 }
 
-impl Composer for RuntimeComposer {
+impl Builder for RuntimeComposer {
     type Wire = RuntimeWire;
-    type BaseComposer = ();
+    type BaseBuilder = ();
 
     /// Allocate a new wire to a column and return it
     fn new_wire(&mut self) -> RuntimeWire {
