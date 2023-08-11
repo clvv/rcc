@@ -1,5 +1,4 @@
-use rcc_halo2::builder::{H2Wire as W, component, circuit_main, *};
-use rcc::{Builder, Wire};
+use rcc_halo2::builder::{H2Wire as W, *};
 
 const N: usize = 10;
 const M: usize = 10;
@@ -25,8 +24,7 @@ fn gen(val: W) -> Vec<(W, W)>
     })
 }
 
-#[circuit_main]
-#[component]
+#[main_component]
 fn my_circuit() {
     let val = input_wire("val");
 

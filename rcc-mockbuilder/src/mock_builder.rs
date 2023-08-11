@@ -1,13 +1,14 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use indexmap::IndexMap;
-use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean, AlgBuilder}, impl_alg_op};
+use rcc::{runtime_composer::RuntimeComposer, impl_alg_op};
 
-pub use rcc::{Builder, impl_global_builder};
-pub use rcc_macro::{component_of, component, circuit_main};
-pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
-pub use ark_bn254::Fr as F;
-pub type RuntimeWire = <RuntimeComposer as Builder>::Wire;
+pub use rcc::{Builder, Wire, traits::{AlgWire, Boolean, AlgBuilder}, impl_global_builder};
+pub use rcc_macro::{component_of, component, main_component};
+
+use ark_ff::PrimeField;
+use ark_bn254::Fr as F;
+type RuntimeWire = <RuntimeComposer as Builder>::Wire;
 
 use std::ops::{Add, Sub, Mul, Neg};
 

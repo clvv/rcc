@@ -1,5 +1,4 @@
-use rcc_mockbuilder::mock_builder::{MockWire as W, component, circuit_main, *};
-use rcc::{Wire, Builder};
+use rcc_mockbuilder::mock_builder::{MockWire as W, *};
 
 const N: usize = 1000;
 const M: usize = 1000;
@@ -23,8 +22,7 @@ fn gen(val: W) -> Vec<(W, W)> {
     })
 }
 
-#[circuit_main]
-#[component]
+#[main_component]
 fn my_circuit() {
     let val = input_wire("val");
 

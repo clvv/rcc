@@ -1,6 +1,9 @@
 #![allow(unused_variables)]
 #![allow(unused_must_use)]
 
+pub use rcc::{Builder, Wire, traits::{AlgWire, Boolean}};
+pub use rcc_macro::{component_of, component, main_component};
+
 use num_bigint::BigUint;
 use rcc::{traits::AlgBuilder, impl_global_builder};
 use std::{ops::{Add, Sub, Mul, Neg}, path::PathBuf};
@@ -9,17 +12,14 @@ use polyexen::plaf::{
     ColumnFixed, ColumnWitness, ColumnPublic, Columns, Info, Plaf, Poly, CopyC
 };
 use polyexen::plaf::{PlafDisplayBaseTOML, PlafDisplayFixedCSV};
-
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use indexmap::IndexMap;
-pub use ark_ff::{BigInteger, BigInt, Field, PrimeField};
-pub use ark_bn254::Fr as F;
-use rcc::{Wire, runtime_composer::RuntimeComposer, traits::{AlgWire, Boolean}, impl_alg_op};
+use ark_ff::PrimeField;
+use ark_bn254::Fr as F;
+use rcc::{runtime_composer::RuntimeComposer, impl_alg_op};
 
-pub use rcc::Builder;
-pub use rcc_macro::{component_of, component, circuit_main};
-pub type RuntimeWire = <RuntimeComposer as Builder>::Wire;
+type RuntimeWire = <RuntimeComposer as Builder>::Wire;
 
 fn fc(index: usize) -> Column {
     Column { kind: ColumnKind::Fixed, index }

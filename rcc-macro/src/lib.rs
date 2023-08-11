@@ -1,8 +1,23 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-
 use syn::{parse, ItemFn};
+
+fn prepend_code_to_function(code: proc_macro2::TokenStream, f: TokenStream) -> TokenStream {
+    let f = parse::<ItemFn>(f.clone()).unwrap();
+    let vis = f.vis;
+    let sig = f.sig;
+    let stmts = f.block.stmts;
+
+    let body = quote! {
+        #vis #sig {
+            #code
+
+            #( #stmts ) *
+        }
+    };
+    body.into()
+}
 
 #[proc_macro_attribute]
 /// ```
@@ -15,24 +30,14 @@ use syn::{parse, ItemFn};
 pub fn component_of(builder_var: TokenStream, item: TokenStream) -> TokenStream {
     let f = parse::<ItemFn>(item.clone()).unwrap();
     let name = format!("{}", f.sig.ident);
-    let vis = f.vis;
-    let sig = f.sig;
+    let marker = format_ident!("__context_marker");
     let builder_var = format_ident!("{}", format!("{}", builder_var));
 
-    let stmts = f.block.stmts;
-
-    let marker = format_ident!("__context_marker");
-
-    let body = quote! {
-        #vis #sig {
-
-            let #marker = #builder_var.new_context(#name.into());
-
-            #( #stmts ) *
-        }
+    let code = quote! {
+        let #marker = #builder_var.new_context(#name.into());
     };
 
-    body.into()
+    prepend_code_to_function(code, item)
 }
 
 #[proc_macro_attribute]
@@ -46,41 +51,42 @@ pub fn component_of(builder_var: TokenStream, item: TokenStream) -> TokenStream 
 pub fn component(_: TokenStream, item: TokenStream) -> TokenStream {
     let f = parse::<ItemFn>(item.clone()).unwrap();
     let name = format!("{}", f.sig.ident);
-    let vis = f.vis;
-    let sig = f.sig;
-    let stmts = f.block.stmts;
-
     let marker = format_ident!("__context_marker");
 
-    let body = quote! {
-        #vis #sig {
-
-            let #marker = builder().new_context(#name.into());
-
-            #( #stmts ) *
-        }
+    let code = quote! {
+        let #marker = builder().new_context(#name.into());
     };
 
-    body.into()
+    prepend_code_to_function(code, item)
 }
 
 #[proc_macro_attribute]
 /// ```
-///     #[circuit_main]
-///     fn my_circuit(e: &mut Builder)
+///     #[main_component]
+///     fn my_circuit()
 /// ```
 /// Marks a function as the main entry function for a circuit.
-pub fn circuit_main(_: TokenStream, mut entry: TokenStream) -> TokenStream {
+pub fn main_component(_: TokenStream, entry: TokenStream) -> TokenStream {
     let f = parse::<ItemFn>(entry.clone()).unwrap();
-    let name = f.sig.ident;
+    let name = format!("{}", f.sig.ident);
+    let name_ident = f.sig.ident;
+    let marker = format_ident!("__context_marker");
+
+    let code = quote! {
+        let #marker = builder().new_context(#name.into());
+    };
+
+    let mut f = prepend_code_to_function(code, entry);
+
     let main = quote! {
         fn main() {
             set_builder();
-            #name();
+            #name_ident();
             builder().compile_from_commandline(file!());
         }
     };
     let m: TokenStream = main.into();
-    entry.extend(m);
-    entry
+
+    f.extend(m);
+    f
 }
