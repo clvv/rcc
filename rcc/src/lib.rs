@@ -6,12 +6,10 @@ pub mod impl_global_builder;
 pub mod runtime_composer;
 pub mod traits;
 
-pub trait Wire: Sized + Copy + Clone {
-    type Builder: Builder<Wire = Self>;
-    fn builder(&self) -> &mut <Self as Wire>::Builder;
-    fn declare_public(self, name: &str) {
-        self.builder().declare_public(self, name);
-    }
+pub trait WireLike: Sized + Copy + Clone {
+    type Builder: Builder;
+    fn builder(&self) -> &mut <Self as WireLike>::Builder;
+    fn declare_public(self, _name: &str);
 }
 
 /// Circuit builder trait

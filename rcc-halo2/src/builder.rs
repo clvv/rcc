@@ -2,8 +2,8 @@
 #![allow(unused_must_use)]
 
 pub use rcc::{
-    traits::{AlgWire, Boolean},
-    Builder, Wire,
+    traits::{AlgWire, Boolean, AlgBuilder, ToBits, ToBitsBuilder},
+    Builder, WireLike,
 };
 pub use rcc_macro::{component, component_of, main_component};
 
@@ -16,8 +16,8 @@ use polyexen::plaf::{ColumnFixed, ColumnPublic, ColumnWitness, Columns, CopyC, I
 use polyexen::plaf::{PlafDisplayBaseTOML, PlafDisplayFixedCSV};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use rcc::{impl_alg_op, runtime_composer::RuntimeComposer};
-use rcc::{impl_global_builder, traits::AlgBuilder};
+use rcc::runtime_composer::RuntimeComposer;
+use rcc::{impl_global_builder, impl_alg_op, impl_to_bits};
 use std::{
     ops::{Add, Mul, Neg, Sub},
     path::PathBuf,
@@ -84,11 +84,15 @@ pub struct H2Wire {
 
 impl_alg_op!(H2Wire, F);
 
-impl Wire for H2Wire {
+impl WireLike for H2Wire {
     type Builder = H2Builder;
 
     fn builder(&self) -> &mut H2Builder {
         unsafe { &mut *self.builder_ptr as &mut H2Builder }
+    }
+
+    fn declare_public(self, name: &str) {
+        self.builder().declare_public(self, name);
     }
 }
 
@@ -419,6 +423,8 @@ impl H2Builder {
     }
 }
 
+impl_global_builder!(H2Builder, H2Wire);
+
 impl AlgBuilder for H2Builder {
     type Constant = F;
     type Bool = Boolean<Self::Wire>;
@@ -593,4 +599,63 @@ impl AlgBuilder for H2Builder {
     }
 }
 
-impl_global_builder!(H2Builder, H2Wire);
+impl ToBitsBuilder for H2Builder {
+    const NUM_BITS: usize = 254;
+
+    #[component_of(self)]
+    fn to_bits_be(&mut self, w: H2Wire, num_bits: usize) -> Vec<Self::Bool> {
+        assert!(num_bits <= Self::NUM_BITS);
+
+        let bits = self.new_wires(num_bits.try_into().unwrap());
+
+        self.runtime(quote! {
+            let u: BigUint = #w.into();
+            let mut bits = u.to_radix_be(2);
+            println!("{:?}", bits);
+            if bits.len() < #num_bits {
+                bits.extend((0..(#num_bits - bits.len())).map(|_| 0))
+            } else if bits.len() > #num_bits {
+                panic!("Error: number has more bits than expected.")
+            }
+        });
+
+        let bits = bits.iter().enumerate().map(|(i, &b)| {
+            self.runtime(quote! {
+                #b = bits[#i].into();
+            });
+            self.assert_bool(b)
+        }).collect();
+
+        // TODO: constrain that bits is the correct decomposition
+
+        bits
+    }
+
+    fn to_bits_be_strict(&mut self, w: H2Wire) -> Vec<Self::Bool> {
+        // TODO: additionally constrain that `bits` is less than `p`
+        self.to_bits_be(w, Self::NUM_BITS)
+    }
+
+    fn to_bits_le(&mut self, w: H2Wire, num_bits: usize) -> Vec<Self::Bool> {
+        let mut v = self.to_bits_be(w, num_bits);
+        v.reverse();
+        v
+    }
+
+    fn to_bits_le_strict(&mut self, w: H2Wire) -> Vec<Self::Bool> {
+        let mut v = self.to_bits_be_strict(w);
+        v.reverse();
+        v
+    }
+
+    fn from_bits_be(&mut self, _: Vec<Self::Bool>) -> Self {
+        todo!()
+    }
+
+    fn from_bits_le(&mut self, _: Vec<Self::Bool>) -> Self {
+        todo!()
+    }
+}
+
+impl_to_bits!(H2Builder, H2Wire);
+

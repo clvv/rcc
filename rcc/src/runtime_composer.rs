@@ -1,4 +1,4 @@
-use crate::{Builder, ContextMarker, Wire};
+use crate::{Builder, ContextMarker, WireLike};
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
@@ -13,11 +13,15 @@ pub struct RuntimeWire {
     composer_ptr: *mut RuntimeComposer,
 }
 
-impl Wire for RuntimeWire {
+impl WireLike for RuntimeWire {
     type Builder = RuntimeComposer;
 
     fn builder(&self) -> &mut RuntimeComposer {
         unsafe { &mut *self.composer_ptr as &mut RuntimeComposer }
+    }
+
+    fn declare_public(self, name: &str) {
+        self.builder().declare_public(self, name);
     }
 }
 

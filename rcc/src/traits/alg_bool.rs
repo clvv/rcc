@@ -1,4 +1,4 @@
-pub use crate::{Builder, Wire};
+pub use crate::{Builder, WireLike};
 use rcc_macro::component_of;
 
 use std::ops::{Add, BitAnd, BitOr, BitXor, Mul, Neg, Not, Sub};
@@ -45,7 +45,7 @@ pub trait AlgWire:
     PartialEq<i64> +
     // PartialEq<F> +
     Neg<Output = Self> +
-    Wire
+    WireLike
 {
     fn inv_or_panic(self);
     fn inv_or_any(self);
@@ -268,5 +268,19 @@ impl<T: AlgWire> BoolWire for Boolean<T> {
 
     fn then_or_else(&self, then: T, els: T) -> T {
         self.0 * then + (-self.0 + 1) * els
+    }
+}
+
+impl<T, B> WireLike for Boolean<T> where
+T: AlgWire<Builder = B>, B: AlgBuilder<Wire = T>
+{
+    type Builder = B;
+
+    fn builder(&self) -> &mut B {
+        self.0.builder()
+    }
+
+    fn declare_public(self, name: &str) {
+        self.builder().declare_public(self.0, name);
     }
 }

@@ -6,7 +6,7 @@ use rcc::{impl_alg_op, runtime_composer::RuntimeComposer};
 pub use rcc::{
     impl_global_builder,
     traits::{AlgBuilder, AlgWire, Boolean},
-    Builder, Wire,
+    Builder, WireLike,
 };
 pub use rcc_macro::{component, component_of, main_component};
 
@@ -29,11 +29,15 @@ pub struct MockWire {
     builder_ptr: *mut MockBuilder,
 }
 
-impl Wire for MockWire {
+impl WireLike for MockWire {
     type Builder = MockBuilder;
 
     fn builder(&self) -> &mut MockBuilder {
         unsafe { &mut *self.builder_ptr as &mut MockBuilder }
+    }
+
+    fn declare_public(self, name: &str) {
+        self.builder().declare_public(self, name);
     }
 }
 
