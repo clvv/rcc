@@ -398,25 +398,18 @@ impl H2Builder {
 
     pub fn compile_from_commandline(&mut self, source: &str) {
         use clap::Parser;
-
-        let path = std::path::PathBuf::from(source);
-        let name = path.file_stem().unwrap().to_str().unwrap();
-        let args = crate::compile_helper::CompilationArgs::parse();
+        let args = crate::utils::CompilationArgs::parse();
 
         let plaf_path = if let Some(p) = args.config {
             p
         } else {
-            let mut plaf_path = path.clone();
-            plaf_path.set_file_name(format!("{name}_config.toml"));
-            plaf_path
+            crate::utils::rs_path_to_config(source)
         };
 
         let runtime_lib_path = if let Some(p) = args.runtime {
             p
         } else {
-            let mut runtime_lib_path = path.clone();
-            runtime_lib_path.set_file_name(format!("{name}_runtime_lib.rs"));
-            runtime_lib_path
+            crate::utils::rs_path_to_runtime_lib(source)
         };
 
         self.write_config(plaf_path, runtime_lib_path);

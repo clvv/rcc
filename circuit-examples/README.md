@@ -5,7 +5,8 @@
 An example circuit for a simple Halo2 backend is provided in
 [`examples/halo2_example.rs`](examples/halo2_example.rs).
 
-To compile the circuit, run
+To compile the circuit, run the following command from the cargo
+workspace root (not `circuit-examples`)
 
 ```
 time cargo run --release --example mock_example
@@ -24,7 +25,8 @@ time cargo run --release --example mock_example_runtime 999
 
 An example circuit is given in [`examples/mock_example.rs`](examples/mock_example.rs).
 
-To compile the `mock_example` circuit, `cd` into `circuit-examples` and run
+To compile the `mock_example` circuit, run the following command from the cargo
+workspace root (not `circuit-examples`)
 
 ```
 time cargo run --release --example mock_example
