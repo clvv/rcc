@@ -10,5 +10,4 @@ rcc-mockbuilder = { path = "../rcc-mockbuilder" }
 rcc-halo2 = { path = "../rcc-halo2" }
 ark-ff = "0.4.0"
 ark-bn254 = "0.4.0"
-rust-format = "0.3.4"
 

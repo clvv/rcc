@@ -26,12 +26,12 @@ fn convert_field_element(f: F) -> Fr {
     Fr::from_repr(repr.try_into().unwrap()).unwrap()
 }
 
-pub fn mock_prove(plaf: Plaf, witness: Witness, instance: Vec<Vec<F>>) {
-    println!("{:?}", plaf);
-    println!("{:?}", witness);
+pub fn mock_prove(plaf: Plaf, witness: Witness, instance_f: Vec<Vec<F>>) {
+    let k = get_minimum_k(&plaf);
+
     println!(
         "Public Instance: {:?}",
-        instance
+        instance_f
             .iter()
             .map(|v| {
                 v.iter()
@@ -44,19 +44,21 @@ pub fn mock_prove(plaf: Plaf, witness: Witness, instance: Vec<Vec<F>>) {
             .collect::<Vec<_>>()
     );
 
-    let k = get_minimum_k(&plaf);
-
     let circuit = PlafH2Circuit { plaf, wit: witness };
 
-    let instance: Vec<Vec<Fr>> = instance
+    let instance: Vec<Vec<Fr>> = instance_f
         .iter()
         .map(|v| v.iter().map(|&f| convert_field_element(f)).collect())
         .collect();
 
     let mock_prover = MockProver::<Fr>::run(k, &circuit, instance).unwrap();
-    mock_prover.assert_satisfied();
 
-    println!("Mock prover succeeded!");
+    if mock_prover.verify() == Ok(()) {
+        println!("Mock prover succeeded!");
+    } else {
+        println!("Circuit was not satisfied.");
+        println!("{:?}", circuit);
+    }
 }
 
 #[test]

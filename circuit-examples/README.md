@@ -9,7 +9,7 @@ To compile the circuit, run the following command from the cargo
 workspace root (not `circuit-examples`)
 
 ```
-time cargo run --release --example mock_example
+time cargo run --release --example halo2_example
 ```
 
 This generates a runtime library file `example/halo2_example_runtime_lib.rs` as
@@ -18,7 +18,7 @@ well as a circuit config file `example/halo2_example_config.toml`.
 To run mock proof generation with input `999`, run
 
 ```
-time cargo run --release --example mock_example_runtime 999
+time cargo run --release --example halo2_example_runtime 999
 ```
 
 ## Witness generator speed test

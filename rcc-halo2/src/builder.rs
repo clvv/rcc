@@ -155,6 +155,7 @@ impl Builder for H2Builder {
             builder_ptr: self as *mut H2Builder,
         };
         self.runtime_composer.runtime(quote!( #w = #a; ));
+        self.runtime_composer.declare_public(w.runtime_wire, name);
         self.copys[1].offsets.push((a.id, self.public.len()));
         self.public.push(w);
         self.wires.push(w);
