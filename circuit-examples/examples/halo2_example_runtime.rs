@@ -23,8 +23,9 @@ fn main() {
     let (wires, public) = generate_witnesses(inputs);
     println!("{:?}", public);
     let (witness, instance) = rcc_output_to_plaf_witness_and_instance(wires);
-    let plaf_string = std::fs::read_to_string("circuit-examples/examples/halo2_example_config.toml")
-        .expect("Cannot read plaf file");
+    let plaf_string =
+        std::fs::read_to_string("circuit-examples/examples/halo2_example_config.toml")
+            .expect("Cannot read plaf file");
     let plaf = deserialize(plaf_string);
     mock_prove(plaf, witness, instance);
 }

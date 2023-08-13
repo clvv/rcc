@@ -1,4 +1,7 @@
-use crate::{traits::{AlgWire, AlgBuilder, BoolWire}, Builder};
+use crate::{
+    traits::{AlgBuilder, AlgWire, BoolWire},
+    Builder,
+};
 
 /// A trait indicating that a wire can be decomposed into bits.
 pub trait ToBitsBuilder: AlgBuilder {

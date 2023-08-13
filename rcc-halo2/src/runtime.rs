@@ -2,8 +2,8 @@ use polyexen::plaf::{ColumnWitness, Witness};
 
 pub use ark_bn254::Fr as F;
 pub use ark_ff::{BigInt, BigInteger, Field};
-pub use num_bigint::BigUint;
 pub use halo2_proofs::halo2curves::bn256::Fr;
+pub use num_bigint::BigUint;
 
 pub use std::collections::HashMap;
 

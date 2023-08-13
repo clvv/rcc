@@ -99,6 +99,16 @@ pub trait AlgBuilder: Builder {
         });
         running_prod
     }
+
+    #[component_of(self)]
+    fn inner_product(&mut self, a: Vec<Self::Wire>, b: Vec<Self::Wire>) -> Self::Wire {
+        let mut carry = self.mul(a[0], b[0]);
+        self.smart_map(a.iter().skip(1).zip(b.iter().skip(1)), |e, (&a, &b)| {
+            let t = e.mul(a, b);
+            carry = e.add(carry, t)
+        });
+        carry
+    }
 }
 
 #[macro_export]
@@ -271,8 +281,10 @@ impl<T: AlgWire> BoolWire for Boolean<T> {
     }
 }
 
-impl<T, B> WireLike for Boolean<T> where
-T: AlgWire<Builder = B>, B: AlgBuilder<Wire = T>
+impl<T, B> WireLike for Boolean<T>
+where
+    T: AlgWire<Builder = B>,
+    B: AlgBuilder<Wire = T>,
 {
     type Builder = B;
 

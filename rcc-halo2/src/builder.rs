@@ -2,7 +2,7 @@
 #![allow(unused_must_use)]
 
 pub use rcc::{
-    traits::{AlgWire, Boolean, AlgBuilder, ToBits, ToBitsBuilder},
+    traits::{AlgBuilder, AlgWire, Boolean, ToBits, ToBitsBuilder},
     Builder, WireLike,
 };
 pub use rcc_macro::{component, component_of, main_component};
@@ -17,7 +17,7 @@ use polyexen::plaf::{PlafDisplayBaseTOML, PlafDisplayFixedCSV};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use rcc::runtime_composer::RuntimeComposer;
-use rcc::{impl_global_builder, impl_alg_op, impl_to_bits};
+use rcc::{impl_alg_op, impl_global_builder, impl_to_bits};
 use std::{
     ops::{Add, Mul, Neg, Sub},
     path::PathBuf,
@@ -75,7 +75,6 @@ pub struct H2Builder {
 
 #[derive(Clone, Copy, Debug)]
 pub struct H2Wire {
-    id: usize,
     column: usize,
     row: usize,
     runtime_wire: RuntimeWire,
@@ -147,7 +146,6 @@ impl Builder for H2Builder {
     fn declare_public(&mut self, a: H2Wire, name: &str) {
         // We create a wire representing the public input wire but it is not accessible elsewhere
         let w = H2Wire {
-            id: self.wires.len(),
             // The first column is the public input column
             column: 1,
             row: self.public.len(),
@@ -156,7 +154,7 @@ impl Builder for H2Builder {
         };
         self.runtime_composer.runtime(quote!( #w = #a; ));
         self.runtime_composer.declare_public(w.runtime_wire, name);
-        self.copys[1].offsets.push((a.id, self.public.len()));
+        self.copys[1].offsets.push((a.row, self.public.len()));
         self.public.push(w);
         self.wires.push(w);
     }
@@ -197,7 +195,6 @@ impl H2Builder {
 
     fn new_wire_from_runtime_wire(&mut self, rt_wire: RuntimeWire) -> H2Wire {
         let w = H2Wire {
-            id: self.wires.len(),
             column: 0,
             row: self.witness.len(),
             runtime_wire: rt_wire,
@@ -226,7 +223,7 @@ impl H2Builder {
     pub fn start_gate_with(&mut self, a: H2Wire) -> H2Wire {
         self.fill_selectors();
 
-        if a.id == self.witness.len() - 1 {
+        if a.row == self.witness.len() - 1 {
             // If a is latest witness wire, we can simply start the gate at a
             *self.selectors.last_mut().unwrap() = 1;
             self.selectors.extend([0, 0, 0].iter());
@@ -242,7 +239,7 @@ impl H2Builder {
     pub fn new_wire_from(&mut self, a: H2Wire) -> H2Wire {
         let b = self.new_wire();
         self.runtime_composer.runtime(quote!( #b = #a; ));
-        self.copys[0].offsets.push((a.id, b.id));
+        self.copys[0].offsets.push((a.row, b.row));
         b
     }
 
@@ -259,7 +256,7 @@ impl H2Builder {
         let us = format!("{}", v.into_bigint());
         self.runtime_composer
             .runtime(quote!( #w = F::from(BigInt!(#us)); ));
-        self.copys[2].offsets.push((w.id, constant_index));
+        self.copys[2].offsets.push((w.row, constant_index));
         w
     }
 
@@ -414,6 +411,20 @@ impl H2Builder {
         };
 
         self.write_config(plaf_path, runtime_lib_path);
+    }
+
+    /// Returns d such that c + a * b = d
+    pub fn mul_add(&mut self, a: H2Wire, b: H2Wire, c: H2Wire) -> H2Wire {
+        self.start_gate_with(c);
+        self.new_wire_from(a);
+        self.new_wire_from(b);
+        let d = self.new_wire();
+
+        self.runtime(quote! {
+            #d = #a * #b + #c;
+        });
+
+        d
     }
 }
 
@@ -577,7 +588,7 @@ impl AlgBuilder for H2Builder {
         });
 
         // asssert that zero_or_one is 0 or 1
-        zero_or_one * (zero_or_one - 1) == 0;
+        self.assert_bool(zero_or_one);
 
         b
     }
@@ -587,9 +598,24 @@ impl AlgBuilder for H2Builder {
         Boolean(a * b)
     }
 
+    #[component_of(self)]
+    /// We assert a is bool by showing that 0 + a * a = a
     fn assert_bool(&mut self, a: H2Wire) -> Self::Bool {
-        a * (a - 1) == 0;
+        let zero = self.new_constant_wire(F::from(0));
+        self.start_gate_with(zero);
+        self.new_wire_from(a);
+        self.new_wire_from(a);
+        self.new_wire_from(a);
         Boolean(a)
+    }
+
+    #[component_of(self)]
+    fn inner_product(&mut self, a: Vec<Self::Wire>, b: Vec<Self::Wire>) -> Self::Wire {
+        let mut carry = self.mul(a[0], b[0]);
+        self.smart_map(a.iter().skip(1).zip(b.iter().skip(1)), |e, (&a, &b)| {
+            carry = e.mul_add(a, b, carry);
+        });
+        carry
     }
 }
 
@@ -600,27 +626,44 @@ impl ToBitsBuilder for H2Builder {
     fn to_bits_be(&mut self, w: H2Wire, num_bits: usize) -> Vec<Self::Bool> {
         assert!(num_bits <= Self::NUM_BITS);
 
-        let bits = self.new_wires(num_bits.try_into().unwrap());
+        let alg_bits = self.new_wires(num_bits);
 
+        // Runtime code to compute be bits
         self.runtime(quote! {
             let u: BigUint = #w.into();
-            let mut bits = u.to_radix_be(2);
-            println!("{:?}", bits);
-            if bits.len() < #num_bits {
-                bits.extend((0..(#num_bits - bits.len())).map(|_| 0))
-            } else if bits.len() > #num_bits {
+            let base2_bits = u.to_radix_be(2);
+            let mut bits = vec![];
+            if base2_bits.len() <= #num_bits {
+                bits.extend((0..(#num_bits - base2_bits.len())).map(|_| F::from(0)));
+                bits.extend(base2_bits.iter().map(|&i| F::from(i)));
+            } else {
                 panic!("Error: number has more bits than expected.")
             }
+            println!("{:?}", bits);
         });
 
-        let bits = bits.iter().enumerate().map(|(i, &b)| {
-            self.runtime(quote! {
-                #b = bits[#i].into();
-            });
-            self.assert_bool(b)
-        }).collect();
+        let bits = alg_bits
+            .iter()
+            .enumerate()
+            .map(|(i, &b)| {
+                self.runtime(quote! {
+                    #b = bits[#i].into();
+                });
+                self.assert_bool(b)
+            })
+            .collect();
 
-        // TODO: constrain that bits is the correct decomposition
+        let zero = self.new_constant_wire(0.into());
+
+        let mut carry = F::from(1);
+        let mut pow2 = vec![];
+        (0..num_bits).for_each(|_| {
+            pow2.push(self.new_constant_wire(carry));
+            carry *= F::from(2);
+        });
+        pow2.reverse();
+
+        w == self.inner_product(pow2, alg_bits);
 
         bits
     }
@@ -652,4 +695,3 @@ impl ToBitsBuilder for H2Builder {
 }
 
 impl_to_bits!(H2Builder, H2Wire);
-

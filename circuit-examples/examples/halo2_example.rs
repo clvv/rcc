@@ -5,7 +5,7 @@ const M: usize = 10;
 
 #[component]
 fn mul_seq(a: W, b: W) -> W {
-    (0..M).fold(a * b, |p, _| { p * p })
+    (0..M).fold(a * b, |p, _| p * p)
 }
 
 #[component]
@@ -17,15 +17,15 @@ fn gen(val: W) -> Vec<(W, W)> {
 fn my_circuit() {
     let val = input_wire("val");
 
-    let ab = gen(val);
-    let c: Vec<W> = ab.iter().map(|(ai, bi)| mul_seq(*ai, *bi)).collect();
-    let sum = sum(c);
+    // let ab = gen(val);
+    // let c: Vec<W> = ab.iter().map(|(ai, bi)| mul_seq(*ai, *bi)).collect();
+    // let sum = sum(c);
 
     val.declare_public("val");
-    sum.declare_public("sum");
+    // sum.declare_public("sum");
 
-    // let bits = val.to_bits_be_strict();
-    // for (i, b) in bits.iter().enumerate() {
-    //     b.declare_public(format!("{i}").as_str());
-    // }
+    let bits = val.to_bits_be_strict();
+    for (i, b) in bits.iter().enumerate() {
+        b.declare_public(format!("{i}").as_str());
+    }
 }

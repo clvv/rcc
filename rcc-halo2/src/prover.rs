@@ -57,7 +57,8 @@ pub fn mock_prove(plaf: Plaf, witness: Witness, instance_f: Vec<Vec<F>>) {
         println!("Mock prover succeeded!");
     } else {
         println!("Circuit was not satisfied.");
-        println!("{:?}", circuit);
+        // println!("{:?}", circuit);
+        mock_prover.assert_satisfied();
     }
 }
 

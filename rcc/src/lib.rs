@@ -6,6 +6,7 @@ pub mod impl_global_builder;
 pub mod runtime_composer;
 pub mod traits;
 
+/// Any data structures or types over wires in a circuit should implement this trait
 pub trait WireLike: Sized + Copy + Clone {
     type Builder: Builder;
     fn builder(&self) -> &mut <Self as WireLike>::Builder;
