@@ -16,14 +16,12 @@ use polyexen::plaf::{ColumnFixed, ColumnPublic, ColumnWitness, Columns, CopyC, I
 use polyexen::plaf::{PlafDisplayBaseTOML, PlafDisplayFixedCSV};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use rcc::runtime_composer::RuntimeComposer;
+use rcc::runtime_composer::{Composer, RuntimeComposer, RuntimeWire};
 use rcc::{impl_alg_op, impl_global_builder, impl_to_bits};
 use std::{
     ops::{Add, Mul, Neg, Sub},
     path::PathBuf,
 };
-
-type RuntimeWire = <RuntimeComposer as Builder>::Wire;
 
 fn fc(index: usize) -> Column {
     Column {
@@ -56,7 +54,7 @@ fn pc(index: usize) -> Column {
 /// satisfying s(X) * (w(X) + w(X*\omega) * w(X*\omega^2) = w(X*\omega^3)) == 0
 /// i.e. a + b * c = d when the selector column is turned on
 pub struct H2Builder {
-    runtime_composer: RuntimeComposer,
+    composer: RuntimeComposer,
     /// Maps field element to their position in the constant column
     constants: IndexMap<F, usize>,
     /// The selector column
@@ -115,27 +113,27 @@ impl H2Wire {
 /// This implements numerous default functions
 impl Builder for H2Builder {
     type Wire = H2Wire;
-    type BaseBuilder = RuntimeComposer;
+    type Composer = RuntimeComposer;
 
-    fn base_builder(&mut self) -> Option<&mut RuntimeComposer> {
-        Some(&mut self.runtime_composer)
+    fn composer(&mut self) -> Option<&mut RuntimeComposer> {
+        Some(&mut self.composer)
     }
 
     /// Allocated a new wire and return it
     fn new_wire(&mut self) -> Self::Wire {
-        let w = self.runtime_composer.new_wire();
+        let w = self.composer.new_wire();
         self.new_wire_from_runtime_wire(w)
     }
 
     /// Allocate a new input wire under name `name`
     fn input_wire(&mut self, name: &str) -> Self::Wire {
-        let w = self.runtime_composer.input_wire(name);
+        let w = self.composer.input_wire(name);
         self.new_wire_from_runtime_wire(w)
     }
 
     /// Allocate a new vector of input wires under name `name`
     fn input_wires(&mut self, name: &str, num: usize) -> Vec<Self::Wire> {
-        let runtime_wires = self.runtime_composer.input_wires(name, num);
+        let runtime_wires = self.composer.input_wires(name, num);
         runtime_wires
             .iter()
             .map(|&w| self.new_wire_from_runtime_wire(w))
@@ -149,11 +147,11 @@ impl Builder for H2Builder {
             // The first column is the public input column
             column: 1,
             row: self.public.len(),
-            runtime_wire: self.runtime_composer.new_wire(),
+            runtime_wire: self.composer.new_wire(),
             builder_ptr: self as *mut H2Builder,
         };
-        self.runtime_composer.runtime(quote!( #w = #a; ));
-        self.runtime_composer.declare_public(w.runtime_wire, name);
+        self.composer.runtime(quote!( #w = #a; ));
+        self.composer.declare_public(w.runtime_wire, name);
         self.copys[1].offsets.push((a.row, self.public.len()));
         self.public.push(w);
         self.wires.push(w);
@@ -189,7 +187,7 @@ impl H2Builder {
             },
         ];
 
-        c.runtime_composer = RuntimeComposer::new();
+        c.composer = RuntimeComposer::new();
         c
     }
 
@@ -238,7 +236,7 @@ impl H2Builder {
     /// Add a new wire to the witness Column whose value is copied from a
     pub fn new_wire_from(&mut self, a: H2Wire) -> H2Wire {
         let b = self.new_wire();
-        self.runtime_composer.runtime(quote!( #b = #a; ));
+        self.composer.runtime(quote!( #b = #a; ));
         self.copys[0].offsets.push((a.row, b.row));
         b
     }
@@ -254,8 +252,7 @@ impl H2Builder {
         };
         let w = self.new_wire();
         let us = format!("{}", v.into_bigint());
-        self.runtime_composer
-            .runtime(quote!( #w = F::from(BigInt!(#us)); ));
+        self.composer.runtime(quote!( #w = F::from(BigInt!(#us)); ));
         self.copys[2].offsets.push((w.row, constant_index));
         w
     }
@@ -379,8 +376,7 @@ impl H2Builder {
             };
         };
 
-        self.runtime_composer
-            .compose_rust_witness_gen(prelude, init)
+        self.composer.compose_witness_gen(prelude, init)
     }
 
     /// Write out circuit config to path
@@ -639,7 +635,6 @@ impl ToBitsBuilder for H2Builder {
             } else {
                 panic!("Error: number has more bits than expected.")
             }
-            println!("{:?}", bits);
         });
 
         let bits = alg_bits
@@ -652,8 +647,6 @@ impl ToBitsBuilder for H2Builder {
                 self.assert_bool(b)
             })
             .collect();
-
-        let zero = self.new_constant_wire(0.into());
 
         let mut carry = F::from(1);
         let mut pow2 = vec![];

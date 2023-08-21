@@ -1,4 +1,4 @@
-use crate::{Builder, ContextMarker, WireLike};
+use crate::ContextMarker;
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
@@ -13,22 +13,26 @@ pub struct RuntimeWire {
     composer_ptr: *mut RuntimeComposer,
 }
 
-impl WireLike for RuntimeWire {
-    type Builder = RuntimeComposer;
+// impl WireLike for RuntimeWire {
+//     type Builder = RuntimeComposer;
 
-    fn builder(&self) -> &mut RuntimeComposer {
+//     fn builder(&self) -> &mut RuntimeComposer {
+//         unsafe { &mut *self.composer_ptr as &mut RuntimeComposer }
+//     }
+
+//     fn declare_public(self, name: &str) {
+//         self.builder().declare_public(self, name);
+//     }
+// }
+
+impl RuntimeWire {
+    fn composer(&self) -> &mut RuntimeComposer {
         unsafe { &mut *self.composer_ptr as &mut RuntimeComposer }
     }
 
-    fn declare_public(self, name: &str) {
-        self.builder().declare_public(self, name);
-    }
-}
-
-impl RuntimeWire {
     /// Print out runtime code that access the allocated wire
     pub fn format_against_latest_context(&self) -> TokenStream {
-        let e = self.builder();
+        let e = self.composer();
         let last_context = e.context_stack.last_mut().unwrap();
         let id = last_context.format_and_mark_input(*self);
         quote! { (*wire(#id)) }
@@ -150,9 +154,27 @@ pub enum InputWireType {
     Vector(Vec<RuntimeWire>),
 }
 
-/// The RuntimeComposer is a helper that helps the ciruict builder to mange
-/// (1) allocation of witnesses (called wires)
-/// (2) runtime code that generates the above allocated witnesses from a small set input wires
+pub trait Composer {
+    type Wire: Sized + Copy + Clone;
+
+    fn new_wire(&mut self) -> Self::Wire;
+
+    fn new_wires(&mut self, num: usize) -> Vec<Self::Wire> {
+        (0..num).map(|_| self.new_wire()).collect()
+    }
+
+    fn input_wire(&mut self, name: &str) -> Self::Wire;
+    fn input_wires(&mut self, name: &str, num: usize) -> Vec<Self::Wire>;
+    fn declare_public(&mut self, w: Self::Wire, name: &str);
+    fn enter_context(&mut self, name: String);
+    fn exit_context(&mut self);
+    fn new_context(&mut self, name: String) -> ContextMarker;
+    fn runtime(&mut self, code: TokenStream);
+    fn compose_witness_gen(&mut self, prelude: TokenStream, init: TokenStream) -> String;
+}
+
+/// The RuntimeComposer is a helper that helps the ciruict builder to compose runtime code that
+/// generate witnesses (called wires) from a small set of input wires.
 #[derive(Default, Clone, Debug)]
 pub struct RuntimeComposer {
     context_stack: Vec<ComponentContext>,
@@ -162,9 +184,8 @@ pub struct RuntimeComposer {
     public_wires: IndexMap<String, RuntimeWire>,
 }
 
-impl Builder for RuntimeComposer {
+impl Composer for RuntimeComposer {
     type Wire = RuntimeWire;
-    type BaseBuilder = ();
 
     /// Allocate a new wire to a column and return it
     fn new_wire(&mut self) -> RuntimeWire {
@@ -285,18 +306,10 @@ impl Builder for RuntimeComposer {
             #closure_ident( &#wires_var[#start..#end], #input_wires );
         });
     }
-}
-
-impl RuntimeComposer {
-    pub fn new() -> Self {
-        let mut s = Self::default();
-        s.context_stack.push(ComponentContext::new("".into(), 0, 0));
-        s
-    }
 
     /// Returns a TokenStream encoding a closure that computes all the witnesses
     /// - `prelude` code sets up necessary imports and must set a type `WireVal`
-    pub fn compose_rust_witness_gen(&mut self, prelude: TokenStream, init: TokenStream) -> String {
+    fn compose_witness_gen(&mut self, prelude: TokenStream, init: TokenStream) -> String {
         let defs = self.compiled_contexts.iter().map(|(_, c)| c.code.clone());
 
         let n = self.wires.len();
@@ -352,5 +365,13 @@ impl RuntimeComposer {
         let parsed: syn::File = syn::parse2(code).unwrap();
         let formatted = prettyplease::unparse(&parsed);
         formatted
+    }
+}
+
+impl RuntimeComposer {
+    pub fn new() -> Self {
+        let mut s = Self::default();
+        s.context_stack.push(ComponentContext::new("".into(), 0, 0));
+        s
     }
 }

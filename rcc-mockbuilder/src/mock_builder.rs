@@ -1,7 +1,10 @@
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use rcc::{impl_alg_op, runtime_composer::RuntimeComposer};
+use rcc::{
+    impl_alg_op,
+    runtime_composer::{Composer, RuntimeComposer, RuntimeWire},
+};
 
 pub use rcc::{
     impl_global_builder,
@@ -12,7 +15,6 @@ pub use rcc_macro::{component, component_of, main_component};
 
 use ark_bn254::Fr as F;
 use ark_ff::PrimeField;
-type RuntimeWire = <RuntimeComposer as Builder>::Wire;
 
 use std::ops::{Add, Mul, Neg, Sub};
 
@@ -53,9 +55,9 @@ impl_alg_op!(MockWire, F);
 /// This implements numerous default functions
 impl Builder for MockBuilder {
     type Wire = MockWire;
-    type BaseBuilder = RuntimeComposer;
+    type Composer = RuntimeComposer;
 
-    fn base_builder(&mut self) -> Option<&mut RuntimeComposer> {
+    fn composer(&mut self) -> Option<&mut RuntimeComposer> {
         Some(&mut self.runtime_composer)
     }
 
@@ -157,8 +159,7 @@ impl MockBuilder {
             #constant_decl;
         };
 
-        self.runtime_composer
-            .compose_rust_witness_gen(prelude, init)
+        self.runtime_composer.compose_witness_gen(prelude, init)
     }
 
     pub fn compile_from_commandline(&mut self, source: &str) {

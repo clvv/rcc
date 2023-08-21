@@ -1,6 +1,7 @@
 #![allow(unused_must_use)]
 
 use proc_macro2::TokenStream;
+use runtime_composer::Composer;
 
 pub mod impl_global_builder;
 pub mod runtime_composer;
@@ -16,9 +17,9 @@ pub trait WireLike: Sized + Copy + Clone {
 /// Circuit builder trait
 pub trait Builder {
     type Wire: Sized + Copy + Clone;
-    type BaseBuilder: Builder;
+    type Composer: Composer;
 
-    fn base_builder(&mut self) -> Option<&mut Self::BaseBuilder> {
+    fn composer(&mut self) -> Option<&mut Self::Composer> {
         None
     }
 
@@ -33,19 +34,19 @@ pub trait Builder {
     fn declare_public(&mut self, w: Self::Wire, name: &str);
 
     fn enter_context(&mut self, name: String) {
-        if let Some(e) = self.base_builder() {
+        if let Some(e) = self.composer() {
             e.enter_context(name)
         }
     }
 
     fn exit_context(&mut self) {
-        if let Some(e) = self.base_builder() {
+        if let Some(e) = self.composer() {
             e.exit_context()
         }
     }
 
     fn new_context(&mut self, name: String) -> ContextMarker {
-        if let Some(e) = self.base_builder() {
+        if let Some(e) = self.composer() {
             e.new_context(name)
         } else {
             ContextMarker {
@@ -55,7 +56,7 @@ pub trait Builder {
     }
 
     fn runtime(&mut self, code: TokenStream) {
-        if let Some(e) = self.base_builder() {
+        if let Some(e) = self.composer() {
             e.runtime(code)
         }
     }
@@ -68,6 +69,9 @@ pub trait Builder {
         mut f: impl FnMut(&mut Self, &T) -> U,
     ) -> Vec<U> {
         let items: Vec<T> = iter.collect();
+        if items.len() == 0 {
+            return vec![];
+        }
         let power = (items.len() as f64).log(10.0).ceil() as u32;
         let step_sizes = (0..power).map(|i| 10usize.pow(power - i));
         let out: Vec<U> = items
@@ -96,6 +100,9 @@ pub trait Builder {
         mut f: impl FnMut(&mut Self, &T) -> U,
     ) -> Vec<U> {
         let items: Vec<T> = iter.collect();
+        if items.len() == 0 {
+            return vec![];
+        }
         let step_size = (items.len() as f64).sqrt() as usize;
         let out: Vec<U> = items
             .iter()
@@ -113,21 +120,6 @@ pub trait Builder {
         self.exit_context();
         out
     }
-}
-
-impl Builder for () {
-    type Wire = ();
-    type BaseBuilder = ();
-
-    fn new_wire(&mut self) -> () {
-        ()
-    }
-
-    fn input_wire(&mut self, _: &str) -> () {}
-    fn input_wires(&mut self, _: &str, _: usize) -> Vec<()> {
-        Vec::new()
-    }
-    fn declare_public(&mut self, _: (), _: &str) -> () {}
 }
 
 /// A hack to keep automatically call a function when a Rust context exits
