@@ -20,10 +20,6 @@ fn main() {
         "start_number".into(),
         F::from(args.get(1).unwrap().parse::<i32>().unwrap()),
     );
-    inputs.insert(
-        "output_number".into(),
-        F::from(args.get(2).unwrap().parse::<i32>().unwrap()),
-    );
     let (wires, public) = generate_witnesses(inputs);
     println!("{:?}", public);
     let (witness, instance) = rcc_output_to_plaf_witness_and_instance(wires);
