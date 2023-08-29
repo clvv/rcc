@@ -7,7 +7,9 @@ fn my_circuit() {
 
     let first_fib_number = input_wire("first_fib_number");
     let second_fib_number = input_wire("second_fib_number");
-    let output_fib_number = input_wire("output_fib_number");
+
+    first_fib_number.declare_public("first_fib_number");
+    second_fib_number.declare_public("second_fib_number");
 
     let mut fib_numbers = vec![first_fib_number, second_fib_number];
 
@@ -19,13 +21,6 @@ fn my_circuit() {
         fib_numbers.push(next_fib_number);
     }
 
-    first_fib_number.declare_public("first_fib_number");
-    second_fib_number.declare_public("second_fib_number");
-
     let last_fib_number = *fib_numbers.last().unwrap();
     last_fib_number.declare_public("last_fib_number");
-
-    // Constrains the last fibonacci number to equal the third public input.
-    //
-    last_fib_number == output_fib_number;
 }
