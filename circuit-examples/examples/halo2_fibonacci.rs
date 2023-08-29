@@ -9,10 +9,7 @@ fn my_circuit() {
     let second_fib_number = input_wire("second_fib_number");
     let output_fib_number = input_wire("output_fib_number");
 
-    let mut fib_numbers = Vec::new();
-
-    fib_numbers.push(first_fib_number);
-    fib_numbers.push(second_fib_number);
+    let mut fib_numbers = vec![first_fib_number, second_fib_number];
 
     // Fibonacci constraints: fib_numbers[i] = fib_numbers[i-1] + fib_numbers[i-2]
     //
@@ -30,5 +27,5 @@ fn my_circuit() {
 
     // Constrains the last fibonacci number to equal the third public input.
     //
-    assert!(last_fib_number == output_fib_number);
+    last_fib_number == output_fib_number;
 }
