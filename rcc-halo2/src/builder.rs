@@ -557,7 +557,7 @@ impl AlgBuilder for H2Builder {
         let _one = self.new_constant_wire(1.into());
 
         self.runtime(quote! {
-            #b = #ap.inverse()..unwrap_or(0.into());
+            #b = #ap.inverse().unwrap_or(0.into());
         });
 
         b
