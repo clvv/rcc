@@ -680,11 +680,11 @@ impl ToBitsBuilder for H2Builder {
         v
     }
 
-    fn from_bits_be(&mut self, _: Vec<Self::Bool>) -> Self {
+    fn from_bits_be(&mut self, _: Vec<Self::Bool>) -> Self::Wire {
         todo!()
     }
 
-    fn from_bits_le(&mut self, _: Vec<Self::Bool>) -> Self {
+    fn from_bits_le(&mut self, _: Vec<Self::Bool>) -> Self::Wire {
         todo!()
     }
 }

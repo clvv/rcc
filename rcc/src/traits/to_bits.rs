@@ -3,7 +3,7 @@ use crate::{
     Builder,
 };
 
-/// A trait indicating that a wire can be decomposed into bits.
+/// A trait indicating that the builder supports decomposing a wire into bits
 pub trait ToBitsBuilder: AlgBuilder {
     /// Maximum num of bits required to represent the underlying field element, i.e. NUM_BITS is
     /// the smallest integer such that 2**NUM_BITS - 1 >= p.
@@ -20,8 +20,8 @@ pub trait ToBitsBuilder: AlgBuilder {
 
     fn to_bits_le(&mut self, w: <Self as Builder>::Wire, num_bits: usize) -> Vec<Self::Bool>;
     fn to_bits_le_strict(&mut self, w: <Self as Builder>::Wire) -> Vec<Self::Bool>;
-    fn from_bits_be(&mut self, _: Vec<Self::Bool>) -> Self;
-    fn from_bits_le(&mut self, _: Vec<Self::Bool>) -> Self;
+    fn from_bits_be(&mut self, _: Vec<Self::Bool>) -> Self::Wire;
+    fn from_bits_le(&mut self, _: Vec<Self::Bool>) -> Self::Wire;
 }
 
 /// A trait indicating that a wire can be decomposed into bits.

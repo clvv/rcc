@@ -11,12 +11,13 @@ RCC provides two categories of traits: wire traits and composer traits.
 
 ## Design Philosophy
 
-1. Functions of wire traits **should never** take `&mut Composer` as input. We want
+1. Functions of wire traits **should never** take `&mut Builder` as input. We want
    to keep the interfaces as clean as possible and rely on interior mutability
-   of wires (all wires encode their composer).
+   of wires (all wires encode their builder).
 2. We support standard Rust operators for wire traits when they make sense
    semantically.
 3. When the above is not possible, we define functions with names that provide
-   clear context on their semantics. e.g. `num_to_bits_be` instead of `num_to_bits`.
+   clear context on their semantics. e.g. `num_to_bits_be` (big endian) instead
+   of `num_to_bits`.
 4. Expected behavior of trait functions must be clearly documented.
 
