@@ -14,6 +14,14 @@ pub trait WireLike: Sized + Copy + Clone {
     fn declare_public(self, _name: &str);
 }
 
+/// This is a sub-trait that can be inherited to enable accessing a global builder
+/// RCC provides a macro that implements this automaticaly
+pub trait WithGlobalBuilder {
+    type Builder: Builder;
+
+    fn global_builder() -> &'static mut <Self as WithGlobalBuilder>::Builder;
+}
+
 /// Circuit builder trait
 pub trait Builder {
     type Wire: Sized + Copy + Clone;

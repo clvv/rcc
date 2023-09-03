@@ -99,18 +99,6 @@ impl MockBuilder {
         }
     }
 
-    /// Allocated a constant wire
-    pub fn new_constant_wire(&mut self, v: F) -> MockWire {
-        let key = format!("{}", v.into_bigint());
-        if self.constants.contains_key(&key) {
-            *self.constants.get(&key).unwrap()
-        } else {
-            let w = self.new_wire();
-            self.constants.insert(key, w);
-            w
-        }
-    }
-
     /// Compose runtime code that read an commandline argument into a wire
     pub fn arg_read(&mut self, wire: MockWire, index: usize) {
         self.runtime(quote! {
@@ -177,6 +165,19 @@ impl MockBuilder {
 impl AlgBuilder for MockBuilder {
     type Constant = F;
     type Bool = Boolean<Self::Wire>;
+
+    #[component_of(self)]
+    /// Allocated a constant wire
+    fn new_constant_wire(&mut self, v: F) -> MockWire {
+        let key = format!("{}", v.into_bigint());
+        if self.constants.contains_key(&key) {
+            *self.constants.get(&key).unwrap()
+        } else {
+            let w = self.new_wire();
+            self.constants.insert(key, w);
+            w
+        }
+    }
 
     #[component_of(self)]
     /// Mock add gadget

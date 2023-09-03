@@ -56,5 +56,13 @@ macro_rules! impl_global_builder {
         ) -> Vec<U> {
             builder().smart_map(iter, f)
         }
+
+        impl rcc::WithGlobalBuilder for $wire {
+            type Builder = $builder;
+            fn global_builder() -> &'static mut $builder {
+                builder()
+            }
+        }
     };
 }
+

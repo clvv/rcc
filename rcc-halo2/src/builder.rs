@@ -241,22 +241,6 @@ impl H2Builder {
         b
     }
 
-    /// Add a new wire to the witness column that is constraint to `v`
-    pub fn new_constant_wire(&mut self, v: F) -> H2Wire {
-        let constant_index = if self.constants.contains_key(&v) {
-            *self.constants.get(&v).unwrap()
-        } else {
-            let l = self.constants.len();
-            self.constants.insert(v, l);
-            l
-        };
-        let w = self.new_wire();
-        let us = format!("{}", v.into_bigint());
-        self.composer.runtime(quote!( #w = F::from(BigInt!(#us)); ));
-        self.copys[2].offsets.push((w.row, constant_index));
-        w
-    }
-
     /// Compose runtime code that logs the value of a wire
     pub fn log(&mut self, wire: H2Wire) {
         self.runtime(quote! {
@@ -429,6 +413,24 @@ impl_global_builder!(H2Builder, H2Wire);
 impl AlgBuilder for H2Builder {
     type Constant = F;
     type Bool = Boolean<Self::Wire>;
+
+    #[component_of(self)]
+    /// Add a new wire to the witness column that is constraint to `v`
+    fn new_constant_wire(&mut self, v: F) -> H2Wire {
+        let constant_index = if self.constants.contains_key(&v) {
+            *self.constants.get(&v).unwrap()
+        } else {
+            let l = self.constants.len();
+            self.constants.insert(v, l);
+            l
+        };
+        let w = self.new_wire();
+        let us = format!("{}", v.into_bigint());
+        self.composer.runtime(quote!( #w = F::from(BigInt!(#us)); ));
+        self.copys[2].offsets.push((w.row, constant_index));
+        w
+    }
+
 
     #[component_of(self)]
     /// Add gadget
