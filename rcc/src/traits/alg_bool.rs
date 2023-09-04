@@ -246,7 +246,7 @@ pub trait BoolWire:
 {
     type AlgWire;
 
-    fn from_const(b: bool) -> Self;
+    fn from_const(b: u32) -> Self;
     fn to_alg(&self) -> Self::AlgWire;
     fn then_or_else(&self, then: Self::AlgWire, els: Self::AlgWire) -> Self::AlgWire;
 }
@@ -286,8 +286,13 @@ impl<T: AlgWire> Not for Boolean<T> {
 impl<T: AlgWire> BoolWire for Boolean<T> {
     type AlgWire = T;
 
-    fn from_const(b: bool) -> Self where <T as AlgWire>::Constant: From<bool> {
-        Boolean(T::from_const(b.into()))
+    fn from_const(b: u32) -> Self where <T as AlgWire>::Constant: From<u32> {
+        let u: u32 = if b > 0 {
+            1
+        } else {
+            0
+        };
+        Boolean(T::from_const(u.into()))
     }
 
     fn to_alg(&self) -> T {

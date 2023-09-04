@@ -43,12 +43,16 @@ pub trait ToBits: AlgWire {
 
     fn to_bits_le(self, num_bits: usize) -> Vec<Self::Bool>;
     fn to_bits_le_strict(self) -> Vec<Self::Bool>;
+
+    fn from_bits_be(_: Vec<Self::Bool>) -> Self;
+    fn from_bits_le(_: Vec<Self::Bool>) -> Self;
 }
 
 #[macro_export]
 /// Automatically implements AlgWire trait for AlgBuilder::Wire
 macro_rules! impl_to_bits {
     ($builder:ident, $wire:ident) => {
+        use rcc::WithGlobalBuilder;
         impl ToBits for $wire {
             type Bool = <$builder as AlgBuilder>::Bool;
             const NUM_BITS: usize = $builder::NUM_BITS;
@@ -67,6 +71,14 @@ macro_rules! impl_to_bits {
 
             fn to_bits_le_strict(self) -> Vec<Self::Bool> {
                 self.builder().to_bits_le_strict(self)
+            }
+
+            fn from_bits_be(bits: Vec<Self::Bool>) -> Self {
+                $wire::global_builder().from_bits_be(bits)
+            }
+
+            fn from_bits_le(bits: Vec<Self::Bool>) -> Self {
+                $wire::global_builder().from_bits_le(bits)
             }
         }
     };

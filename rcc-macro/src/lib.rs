@@ -1,7 +1,7 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse, ItemFn};
+use syn::{parse, ItemFn, Expr};
 
 fn prepend_code_to_function(code: proc_macro2::TokenStream, f: TokenStream) -> TokenStream {
     let f = parse::<ItemFn>(f.clone()).unwrap();
@@ -31,10 +31,11 @@ pub fn component_of(builder_var: TokenStream, item: TokenStream) -> TokenStream 
     let f = parse::<ItemFn>(item.clone()).unwrap();
     let name = format!("{}", f.sig.ident);
     let marker = format_ident!("__context_marker");
-    let builder_var = format_ident!("{}", format!("{}", builder_var));
+
+    let builder_expr = parse::<Expr>(builder_var).unwrap();
 
     let code = quote! {
-        let #marker = #builder_var.new_context(#name.into());
+        let #marker = #builder_expr.new_context(#name.into());
     };
 
     prepend_code_to_function(code, item)

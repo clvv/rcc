@@ -16,3 +16,20 @@ halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shu
 [patch.crates-io]
 halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle"}
 
+[profile.dev.package."circuit-examples"]
+debug = false
+debug-assertions = false
+overflow-checks = false
+
+# Speed up witness gen compilation
+# opt-level = 3 is about 50x slower
+# [profile.release.package."circuit-examples"]
+# opt-level = 0
+
+# An alternative choice is opt-level = 1 but with lto off
+# [profile.release]
+# lto = "off"
+
+# [profile.release.package."circuit-examples"]
+# opt-level = 1
+

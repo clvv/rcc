@@ -1,11 +1,15 @@
 #![allow(unused_must_use)]
 
+/// Re-exports
+pub use rcc_macro::{component, component_of, main_component};
+
 use proc_macro2::TokenStream;
 use runtime_composer::Composer;
 
 pub mod impl_global_builder;
 pub mod runtime_composer;
 pub mod traits;
+
 
 /// Any data structures or types over wires in a circuit should implement this trait
 pub trait WireLike: Sized + Copy + Clone {
@@ -17,7 +21,7 @@ pub trait WireLike: Sized + Copy + Clone {
 /// This is a sub-trait that can be inherited to enable accessing a global builder
 /// RCC provides a macro that implements this automaticaly
 pub trait WithGlobalBuilder {
-    type Builder: Builder;
+    type Builder: 'static + Builder;
 
     fn global_builder() -> &'static mut <Self as WithGlobalBuilder>::Builder;
 }
@@ -61,6 +65,12 @@ pub trait Builder {
                 func: Box::new(|| {}),
             }
         }
+    }
+
+    fn new_component(&mut self, f: impl FnOnce() -> ()) {
+        self.enter_context("anon_component".into());
+        f();
+        self.exit_context();
     }
 
     fn runtime(&mut self, code: TokenStream) {
