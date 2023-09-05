@@ -41,12 +41,10 @@ fn ssigma0<T: UInt32 + WithGlobalBuilder>(x: T) -> T {
     x.rotate_right(7) ^ x.rotate_right(18) ^ (x >> 3)
 }
 
-
 #[component_of(T::global_builder())]
 fn ssigma1<T: UInt32 + WithGlobalBuilder>(x: T) -> T {
     x.rotate_right(17) ^ x.rotate_right(19) ^ (x >> 10)
 }
-
 
 #[component_of(T::global_builder())]
 pub fn sha256_compression<T: UInt32 + WithGlobalBuilder>(input: [T; 16], hin: [T; 8]) -> [T; 8] {
@@ -65,18 +63,17 @@ pub fn sha256_compression<T: UInt32 + WithGlobalBuilder>(input: [T; 16], hin: [T
     let kk: [T; 64] = k_vec.try_into().unwrap_or_else(|_| unimplemented!());
 
     for t in 0..64 {
-        let __c = T::global_builder().new_context("for_loop".into());
+        let __for_loop = T::global_builder().new_context("for_loop".into());
         if t < 16 {
             w.push(input[t])
         } else {
-            T::global_builder().new_component(|| {
+            let __a = T::global_builder().new_context("a".into());
                 w.push(ssigma1(w[t-2]) + w[t-7] + ssigma0(w[t-15]) + w[t-16])
-            })
         };
 
         let mut t1 = w[t] + kk[t];
 
-        T::global_builder().enter_context("a".into());
+        let __b = T::global_builder().new_context("b".into());
         t1 = t1 + h + bsigma1(e) + ch(e,f,g);
         let t2 = bsigma0(a) + maj(a,b,c);
         h = g;
@@ -87,7 +84,6 @@ pub fn sha256_compression<T: UInt32 + WithGlobalBuilder>(input: [T; 16], hin: [T
         c = b;
         b = a;
         a = t1 + t2;
-        T::global_builder().exit_context();
     }
 
     [
