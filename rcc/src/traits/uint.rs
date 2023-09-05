@@ -1,30 +1,11 @@
 use crate::{
-    traits::{AlgBuilder, AlgWire, BoolWire, ToBits},
-    WireLike, WithGlobalBuilder
+    traits::{AlgWire, BoolWire, ToBits},
+    WithGlobalBuilder
 };
 
 use std::ops::{Add, BitAnd, BitOr, BitXor, Mul, Not, Sub, Div, Shl, Shr};
 
 use super::Boolean;
-
-/// A trait indicating that the builder supports decomposing a wire into limbs
-pub trait UIntBuilder: AlgBuilder {
-    type UInt: WireLike;
-    type DenseRepr: WireLike;
-
-    fn to_dense(&self) -> Self::DenseRepr;
-
-    fn add(&mut self, _: Self::UInt, _: Self::UInt);
-    fn sub(&mut self, _: Self::UInt, _: Self::UInt);
-    fn mul(&mut self, _: Self::UInt, _: Self::UInt);
-    fn div(&mut self, _: Self::UInt, _: Self::UInt);
-    fn and(&mut self, _: Self::UInt, _: Self::UInt);
-    fn or(&mut self, _: Self::UInt, _: Self::UInt);
-    fn xor(&mut self, _: Self::UInt, _: Self::UInt);
-    fn not(&mut self, _: Self::UInt);
-    fn shl_const(&mut self, _: Self::UInt, _: usize);
-    fn shr_const(&mut self, _: Self::UInt, _: usize);
-}
 
 /// Trait for an unsigned integer of arbitrary bitlength
 pub trait UInt32:
@@ -61,7 +42,6 @@ pub trait UInt32:
 }
 
 /// An naive implementaiton of UInt32 using boolean wires
-/// This assumes that the underlying finite field is of size at least 2^
 #[derive(Copy, Clone)]
 pub struct NaiveUInt32<Bool: BoolWire> {
     pub repr: [Bool; 32]

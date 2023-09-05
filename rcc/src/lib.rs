@@ -67,12 +67,6 @@ pub trait Builder {
         }
     }
 
-    fn new_component(&mut self, f: impl FnOnce() -> ()) {
-        self.enter_context("anon_component".into());
-        f();
-        self.exit_context();
-    }
-
     fn runtime(&mut self, code: TokenStream) {
         if let Some(e) = self.composer() {
             e.runtime(code)
