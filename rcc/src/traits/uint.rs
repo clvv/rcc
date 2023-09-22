@@ -123,22 +123,23 @@ where
     }
 }
 
-impl<T: AlgWire + ToBits> Sub for NaiveUInt32<Boolean<T>> {
+impl<T: AlgWire + ToBits<Bool = Boolean<T>>> Sub for NaiveUInt32<Boolean<T>> {
     type Output = Self;
 
-    fn sub(self, _other: Self) -> Self {
-        todo!()
+    fn sub(self, other: Self) -> Self {
+        // We use two's complement method here for substraction
+        self + !other
     }
 }
 
-impl<C, T: AlgWire + ToBits> Sub<C> for NaiveUInt32<Boolean<T>>
+impl<C, T: AlgWire + ToBits<Bool = Boolean<T>>> Sub<C> for NaiveUInt32<Boolean<T>>
 where
     C: Into<u32>,
 {
     type Output = Self;
 
-    fn sub(self, _other: C) -> Self {
-        todo!()
+    fn sub(self, other: C) -> Self {
+        self + NaiveUInt32::from_const(!other.into())
     }
 }
 
@@ -180,7 +181,7 @@ where
     }
 }
 
-impl<T: AlgWire + ToBits> BitAnd for NaiveUInt32<Boolean<T>> {
+impl<T: AlgWire + ToBits<Bool = Boolean<T>>> BitAnd for NaiveUInt32<Boolean<T>> {
     type Output = Self;
 
     fn bitand(self, other: Self) -> Self {
@@ -192,18 +193,19 @@ impl<T: AlgWire + ToBits> BitAnd for NaiveUInt32<Boolean<T>> {
     }
 }
 
-impl<C, T: AlgWire + ToBits> BitAnd<C> for NaiveUInt32<Boolean<T>>
+impl<C, T: AlgWire + ToBits<Bool = Boolean<T>>> BitAnd<C> for NaiveUInt32<Boolean<T>>
 where
     C: Into<u32>,
 {
     type Output = Self;
 
-    fn bitand(self, _other: C) -> Self {
-        todo!()
+    fn bitand(self, other: C) -> Self {
+        let other = NaiveUInt32::from_const(other.into());
+        self & other
     }
 }
 
-impl<T: AlgWire + ToBits> BitOr for NaiveUInt32<Boolean<T>> {
+impl<T: AlgWire + ToBits<Bool = Boolean<T>>> BitOr for NaiveUInt32<Boolean<T>> {
     type Output = Self;
 
     fn bitor(self, other: Self) -> Self {
@@ -215,18 +217,19 @@ impl<T: AlgWire + ToBits> BitOr for NaiveUInt32<Boolean<T>> {
     }
 }
 
-impl<C, T: AlgWire + ToBits> BitOr<C> for NaiveUInt32<Boolean<T>>
+impl<C, T: AlgWire + ToBits<Bool = Boolean<T>>> BitOr<C> for NaiveUInt32<Boolean<T>>
 where
     C: Into<u32>,
 {
     type Output = Self;
 
-    fn bitor(self, _other: C) -> Self {
-        todo!()
+    fn bitor(self, other: C) -> Self {
+        let other = NaiveUInt32::from_const(other.into());
+        self | other
     }
 }
 
-impl<T: AlgWire + ToBits> BitXor for NaiveUInt32<Boolean<T>> {
+impl<T: AlgWire + ToBits<Bool = Boolean<T>>> BitXor for NaiveUInt32<Boolean<T>> {
     type Output = Self;
 
     fn bitxor(self, other: Self) -> Self {
@@ -238,14 +241,15 @@ impl<T: AlgWire + ToBits> BitXor for NaiveUInt32<Boolean<T>> {
     }
 }
 
-impl<C, T: AlgWire + ToBits> BitXor<C> for NaiveUInt32<Boolean<T>>
+impl<C, T: AlgWire + ToBits<Bool = Boolean<T>>> BitXor<C> for NaiveUInt32<Boolean<T>>
 where
     C: Into<u32>,
 {
     type Output = Self;
 
-    fn bitxor(self, _other: C) -> Self {
-        todo!()
+    fn bitxor(self, other: C) -> Self {
+        let other = NaiveUInt32::from_const(other.into());
+        self ^ other
     }
 }
 
@@ -255,8 +259,17 @@ where
 {
     type Output = Self;
 
-    fn shl(self, _other: C) -> Self {
-        todo!()
+    fn shl(self, c: C) -> Self {
+        let c: u32 = c.into();
+        let repr_vec: Vec<_> = (0..32).map(|i| {
+            if i + c < 32 {
+                self.repr[(i + c) as usize]
+            } else {
+                Boolean::<T>::from_const(0)
+            }
+        }).collect();
+
+        NaiveUInt32::from_vec(repr_vec)
     }
 }
 
