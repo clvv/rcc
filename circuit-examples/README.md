@@ -18,8 +18,11 @@ well as a circuit config file `example/halo2_example_config.toml`.
 To run mock proof generation with input `999`, run
 
 ```
-time cargo run --release --example halo2_example_runtime 999
+time cargo run --example halo2_example_runtime 999
 ```
+
+Note that we recommend compiling and running the witness generator in `dev`
+mode, as running it in `release` mode could result a 50x slower compilation time.
 
 ## Witness generator speed test
 
@@ -37,7 +40,7 @@ This will generate the runtime library file for the circuit in
 set to `999`, run
 
 ```
-time cargo run --release --example mock_example_runtime 999
+time cargo run --example mock_example_runtime 999
 ```
 
 A Circom circuit of equivalent functionality is given in
@@ -49,4 +52,3 @@ commands inside `example_circom`.
 time circom example.circom --wasm
 time node example_js/generate_witness.js example_js/example.wasm input.json outputs.wtns
 ```
-

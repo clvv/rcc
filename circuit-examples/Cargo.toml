@@ -6,6 +6,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 rcc = { path = "../rcc" }
+rcc-lib = { path = "../rcc-lib" }
 rcc-macro = { path = "../rcc-macro" }
 rcc-mockbuilder = { path = "../rcc-mockbuilder" }
 rcc-halo2 = { path = "../rcc-halo2" }

@@ -1,15 +1,14 @@
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use rcc::{
-    impl_alg_op,
-    runtime_composer::{Composer, RuntimeComposer, RuntimeWire},
-};
+use rcc::{runtime_composer::{Composer, RuntimeComposer, RuntimeWire}, traits::BoolWire};
 
 pub use rcc::{
+    impl_alg_op,
+    impl_to_bits,
     impl_global_builder,
-    traits::{AlgBuilder, AlgWire, Boolean},
     Builder, WireLike,
+    traits::{ToBits, AlgBuilder, AlgWire, Boolean, ToBitsBuilder},
 };
 pub use rcc_macro::{component, component_of, main_component};
 
@@ -99,18 +98,6 @@ impl MockBuilder {
         }
     }
 
-    /// Allocated a constant wire
-    pub fn new_constant_wire(&mut self, v: F) -> MockWire {
-        let key = format!("{}", v.into_bigint());
-        if self.constants.contains_key(&key) {
-            *self.constants.get(&key).unwrap()
-        } else {
-            let w = self.new_wire();
-            self.constants.insert(key, w);
-            w
-        }
-    }
-
     /// Compose runtime code that read an commandline argument into a wire
     pub fn arg_read(&mut self, wire: MockWire, index: usize) {
         self.runtime(quote! {
@@ -128,11 +115,7 @@ impl MockBuilder {
     /// Returns a String encoding a closure that computes all the witnesses
     pub fn compose_rust_witness_gen(&mut self) -> String {
         let prelude = quote! {
-                use ark_ff::{BigInt, Field, PrimeField};
-                use ark_bn254::Fr as F;
-                // runtime composer expects WireVal to be defined
-                type WireVal = F;
-                type AllWires = Vec<F>;
+            use rcc_mockbuilder::runtime::*;
         };
 
         let n = self.runtime_composer.wires.len();
@@ -177,6 +160,18 @@ impl MockBuilder {
 impl AlgBuilder for MockBuilder {
     type Constant = F;
     type Bool = Boolean<Self::Wire>;
+
+    /// Allocated a constant wire
+    fn new_constant_wire(&mut self, v: F) -> MockWire {
+        let key = format!("{}", v.into_bigint());
+        if self.constants.contains_key(&key) {
+            *self.constants.get(&key).unwrap()
+        } else {
+            let w = self.new_wire();
+            self.constants.insert(key, w);
+            w
+        }
+    }
 
     #[component_of(self)]
     /// Mock add gadget
@@ -305,3 +300,96 @@ impl AlgBuilder for MockBuilder {
 }
 
 impl_global_builder!(MockBuilder, MockWire);
+
+impl ToBitsBuilder for MockBuilder {
+    const NUM_BITS: usize = 254;
+
+    #[component_of(self)]
+    fn to_bits_be(&mut self, w: MockWire, num_bits: usize) -> Vec<Self::Bool> {
+        assert!(num_bits <= Self::NUM_BITS);
+
+        let alg_bits = self.new_wires(num_bits);
+
+        // Runtime code to compute be bits
+        self.runtime(quote! {
+            let u: BigUint = #w.into();
+            let base2_bits = u.to_radix_be(2);
+            let mut bits = vec![];
+            if base2_bits.len() <= #num_bits {
+                bits.extend((0..(#num_bits - base2_bits.len())).map(|_| F::from(0)));
+                bits.extend(base2_bits.iter().map(|&i| F::from(i)));
+            } else {
+                panic!("Error: number has more bits than expected.")
+            }
+        });
+
+        let bits = alg_bits
+            .iter()
+            .enumerate()
+            .map(|(i, &b)| {
+                self.runtime(quote! {
+                    #b = bits[#i].into();
+                });
+                self.assert_bool(b)
+            })
+            .collect();
+
+        let mut carry = F::from(1);
+        let mut pow2 = vec![];
+        (0..num_bits).for_each(|_| {
+            pow2.push(self.new_constant_wire(carry));
+            carry *= F::from(2);
+        });
+        pow2.reverse();
+
+        w == self.inner_product(pow2, alg_bits);
+
+        bits
+    }
+
+    fn to_bits_be_strict(&mut self, w: MockWire) -> Vec<Self::Bool> {
+        // TODO: additionally constrain that `bits` is less than `p`
+        self.to_bits_be(w, Self::NUM_BITS)
+    }
+
+    fn to_bits_le(&mut self, w: MockWire, num_bits: usize) -> Vec<Self::Bool> {
+        let mut v = self.to_bits_be(w, num_bits);
+        v.reverse();
+        v
+    }
+
+    fn to_bits_le_strict(&mut self, w: MockWire) -> Vec<Self::Bool> {
+        let mut v = self.to_bits_be_strict(w);
+        v.reverse();
+        v
+    }
+
+    fn from_bits_be(&mut self, bits: Vec<Self::Bool>) -> Self::Wire {
+        let v = self.new_wire();
+        let num_bits = bits.len();
+
+        let mut carry = F::from(1);
+        let mut pow2 = vec![];
+        (0..num_bits).for_each(|_| {
+            pow2.push(self.new_constant_wire(carry));
+            carry *= F::from(2);
+        });
+        pow2.reverse();
+
+        for (i, bit) in bits.iter().enumerate() {
+            let alg_bit = bit.to_alg();
+            let c = pow2[i];
+            self.runtime(quote! {
+                #v = #v + #alg_bit * #c;
+            });
+        }
+        v
+    }
+
+    fn from_bits_le(&mut self, mut bits: Vec<Self::Bool>) -> Self::Wire {
+        bits.reverse();
+        self.from_bits_be(bits)
+    }
+}
+
+impl_to_bits!(MockBuilder, MockWire);

@@ -4,6 +4,7 @@ members = [
     "cargo-rcc",
     "circuit-examples",
     "rcc",
+    "rcc-lib",
     "rcc-halo2",
     "rcc-macro",
     "rcc-mockbuilder",
@@ -14,4 +15,9 @@ halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shu
 
 [patch.crates-io]
 halo2_proofs = { git = "https://github.com/powdr-org/halo2", branch = "kilic/shuffle"}
+
+[profile.dev.package."circuit-examples"]
+debug = false
+debug-assertions = false
+overflow-checks = false
 

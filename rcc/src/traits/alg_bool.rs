@@ -47,6 +47,9 @@ pub trait AlgWire:
     Neg<Output = Self> +
     WireLike
 {
+    type Constant: From<bool> + From<u32> + From<i32>;
+
+    fn from_const(_: Self::Constant) -> Self;
     fn inv_or_panic(self);
     fn inv_or_any(self);
 }
@@ -54,6 +57,8 @@ pub trait AlgWire:
 pub trait AlgBuilder: Builder {
     type Constant: From<i32> + From<i64> + From<u32> + From<u64>;
     type Bool: BoolWire;
+
+    fn new_constant_wire(&mut self, a: Self::Constant) -> Self::Wire;
 
     fn add(&mut self, a: Self::Wire, b: Self::Wire) -> Self::Wire;
     fn add_const(&mut self, a: Self::Wire, b: Self::Constant) -> Self::Wire;
@@ -210,7 +215,15 @@ macro_rules! impl_alg_op {
             }
         }
 
+
         impl AlgWire for $wire {
+            type Constant = $constant_type;
+
+            fn from_const(a: Self::Constant) -> Self {
+                use rcc::WithGlobalBuilder;
+                $wire::global_builder().new_constant_wire(a)
+            }
+
             fn inv_or_panic(self) {
                 self.builder().inv_or_panic(self);
             }
@@ -233,6 +246,7 @@ pub trait BoolWire:
 {
     type AlgWire;
 
+    fn from_const(b: u32) -> Self;
     fn to_alg(&self) -> Self::AlgWire;
     fn then_or_else(&self, then: Self::AlgWire, els: Self::AlgWire) -> Self::AlgWire;
 }
@@ -271,6 +285,15 @@ impl<T: AlgWire> Not for Boolean<T> {
 
 impl<T: AlgWire> BoolWire for Boolean<T> {
     type AlgWire = T;
+
+    fn from_const(b: u32) -> Self where <T as AlgWire>::Constant: From<u32> {
+        let u: u32 = if b > 0 {
+            1
+        } else {
+            0
+        };
+        Boolean(T::from_const(u.into()))
+    }
 
     fn to_alg(&self) -> T {
         self.0

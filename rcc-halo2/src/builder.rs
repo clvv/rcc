@@ -2,7 +2,7 @@
 #![allow(unused_must_use)]
 
 pub use rcc::{
-    traits::{AlgBuilder, AlgWire, Boolean, ToBits, ToBitsBuilder},
+    traits::{AlgBuilder, AlgWire, BoolWire, Boolean, ToBits, ToBitsBuilder},
     Builder, WireLike,
 };
 pub use rcc_macro::{component, component_of, main_component};
@@ -205,8 +205,8 @@ impl H2Builder {
 
     /// Fill the selector vector until it is of the same length as the witness vector
     fn fill_selectors(&mut self) {
-        let n = self.witness.len() - self.selectors.len();
-        if n > 0 {
+        if self.witness.len() > self.selectors.len() {
+            let n = self.witness.len() - self.selectors.len();
             self.selectors.extend((0..n).map(|_| 0))
         }
     }
@@ -239,22 +239,6 @@ impl H2Builder {
         self.composer.runtime(quote!( #b = #a; ));
         self.copys[0].offsets.push((a.row, b.row));
         b
-    }
-
-    /// Add a new wire to the witness column that is constraint to `v`
-    pub fn new_constant_wire(&mut self, v: F) -> H2Wire {
-        let constant_index = if self.constants.contains_key(&v) {
-            *self.constants.get(&v).unwrap()
-        } else {
-            let l = self.constants.len();
-            self.constants.insert(v, l);
-            l
-        };
-        let w = self.new_wire();
-        let us = format!("{}", v.into_bigint());
-        self.composer.runtime(quote!( #w = F::from(BigInt!(#us)); ));
-        self.copys[2].offsets.push((w.row, constant_index));
-        w
     }
 
     /// Compose runtime code that logs the value of a wire
@@ -429,6 +413,24 @@ impl_global_builder!(H2Builder, H2Wire);
 impl AlgBuilder for H2Builder {
     type Constant = F;
     type Bool = Boolean<Self::Wire>;
+
+    /// Add a new wire to the witness column that is constraint to `v`
+    fn new_constant_wire(&mut self, v: F) -> H2Wire {
+        let constant_index = if self.constants.contains_key(&v) {
+            *self.constants.get(&v).unwrap()
+        } else {
+            let l = self.constants.len();
+            self.constants.insert(v, l);
+            l
+        };
+        let w = self.new_wire();
+        let us = format!("{}", v.into_bigint());
+        self.composer.runtime(quote!( #w = F::from(BigInt!(#us)); ));
+        self.copys[2].offsets.push((w.row, constant_index));
+        self.fill_selectors();
+        w
+    }
+
 
     #[component_of(self)]
     /// Add gadget
@@ -678,12 +680,31 @@ impl ToBitsBuilder for H2Builder {
         v
     }
 
-    fn from_bits_be(&mut self, _: Vec<Self::Bool>) -> Self {
-        todo!()
+    fn from_bits_be(&mut self, bits: Vec<Self::Bool>) -> Self::Wire {
+        let v = self.new_wire();
+        let num_bits = bits.len();
+
+        let mut carry = F::from(1);
+        let mut pow2 = vec![];
+        (0..num_bits).for_each(|_| {
+            pow2.push(self.new_constant_wire(carry));
+            carry *= F::from(2);
+        });
+        pow2.reverse();
+
+        for (i, bit) in bits.iter().enumerate() {
+            let alg_bit = bit.to_alg();
+            let c = pow2[i];
+            self.runtime(quote! {
+                #v = #v + #alg_bit * #c;
+            });
+        }
+        v
     }
 
-    fn from_bits_le(&mut self, _: Vec<Self::Bool>) -> Self {
-        todo!()
+    fn from_bits_le(&mut self, mut bits: Vec<Self::Bool>) -> Self::Wire {
+        bits.reverse();
+        self.from_bits_be(bits)
     }
 }
 
